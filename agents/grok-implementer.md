@@ -54,7 +54,7 @@ T=$(command -v gtimeout || command -v timeout || true)
 
 ${T:+$T 600} grok --prompt-file "$SPEC" \
   -m grok-4.5 \
-  --permission-mode acceptEdits \
+  --permission-mode auto \
   --output-format plain \
   --cwd "$(pwd)" \
   > /tmp/grok-final-$$.txt 2>&1
