@@ -57,6 +57,23 @@ implementation, and verify the evidence before you call it done.
 
 The architect writes the spec, picks the lane (rate limiting touches concurrency — a good case for racing `grok-implementer` against `codex-implementer` and picking the stronger diff), reads the diff and verification evidence when the report comes back, and only then reports done.
 
+### Smithers workflow
+
+This repo also ships a durable Smithers workflow that turns a work request into the Fable Advisor routing packet: intake, CLI preflight, lane decision, five-part implementer spec, advisor prompt, and verification contract.
+
+```bash
+bunx smithers-orchestrator workflow run fable-advisor \
+  --input '{
+    "prompt":"Add rate limiting to our public API",
+    "risk":"correctness-critical",
+    "files":["src/api/**"],
+    "interfaces":"Do not change public response bodies.",
+    "verification":"npm test && npm run lint"
+  }'
+```
+
+The workflow is orchestration-only by design: it does not silently edit code or substitute unavailable lanes. If `grok`, `codex`, or `claude` are missing from the shell, the output says so and downgrades or blocks according to the routing doctrine.
+
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
 ```
