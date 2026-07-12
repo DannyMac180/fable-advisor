@@ -33,6 +33,8 @@ Grok vs codex is not a capability ranking — it's a failure-distribution questi
 
 If a lane returns `unavailable` or `timeout`, re-route the same spec to the other lane and say so explicitly in your report — never quietly absorb the substitution. If both CLI lanes are unavailable, implement with a Claude subagent and state the downgrade plainly.
 
+One recoverable `unavailable` case: when codex reports `sandbox denied writes` (a host-side sandbox bug — the workspace-write ACE grant fails and the failure is cached; observed on Windows), you may resend the same spec with the line `sandbox-fallback: allowed` if the operator accepts codex running under their own configured sandbox mode; the lane then retries once without `--sandbox` and marks the report `SANDBOX: downgraded`.
+
 ## The spec contract
 
 Implementers share none of your conversation context. Every delegation prompt carries all five parts:
