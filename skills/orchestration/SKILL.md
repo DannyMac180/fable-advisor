@@ -25,6 +25,7 @@ What stays with the architect regardless of cost: decomposition, interface desig
 |---|---|---|---|
 | Routine | Grok 4.5 | `grok-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the [Grok CLI](https://x.ai/cli). |
 | Cross-vendor | GPT-5.6 Sol (high reasoning) | `codex-implementer` agent | Correctness/completeness is critical enough to want a second implementation, or as the alternative family when the grok lane is unavailable. Requires the codex CLI. |
+| Overflow / third family | Composer 2.5 | `cursor-implementer` agent | The grok lane is unavailable or rate-limited and the task doesn't warrant the codex lane's reasoning premium; or a third independent diff is wanted for racing. Requires the Cursor CLI (`cursor-agent`). |
 | Judgment | Fable 5 | `fable-advisor` agent | Not an implementation lane. See "Commitment boundaries" below. |
 
 Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default grok lane; you will verify anyway. A lot, and mistakes are costly → race both lanes on the same spec and pick the stronger diff, or keep that piece with the architect.
