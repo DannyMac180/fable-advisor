@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
-  "version": "3.1.0",
-  "description": "Run your session on Claude's most capable model as a full-time architect: it writes specs and verdicts while Grok 4.5 (via the Grok CLI) and GPT-5.6 Sol at high reasoning (via Codex) do the typing. Fable-level judgment with cross-vendor implementation.",
+  "version": "4.0.0",
+  "description": "Run your session on Opus as a full-time architect: it writes specs and verdicts, GPT-5.6 Sol at high reasoning (via Codex) does the routine typing, Fable 5 handles the high-complexity one-offs — and reviews every deliverable before it ships.",
   "author": {
     "name": "Dan McAteer",
     "url": "https://github.com/DannyMac180"
@@ -12,10 +12,10 @@
     "agents",
     "model-routing",
     "fable",
+    "opus",
     "advisor",
     "orchestration",
     "architect",
-    "grok",
     "codex"
   ]
 }
