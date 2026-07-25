@@ -69,13 +69,40 @@ Flag discipline (non-negotiable):
 
 | Flag | Why |
 |---|---|
-| `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Never `danger-full-access`. |
+| `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Always the first attempt — never start with `danger-full-access`. |
 | `-c model_reasoning_effort=high` | Pins GPT-5.6 Sol to high reasoning for complex implementation work. |
 | `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root; works outside git repos. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
 | `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. |
 
 `--model gpt-5.6-sol` selects the Sol capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
+
+### Sandbox denial — fail loud, or fall back only on explicit opt-in
+
+On some hosts (observed on Windows), codex's sandbox setup helper fails to grant
+the workspace write ACE and then caches the failure: every `--sandbox
+workspace-write` run ends with codex reporting the workspace as read-only
+(e.g. *"the workspace is read-only and write approval is disabled"*) and
+`git status` shows no changes. The helper does not retry on its own, so the
+lane stays dead until the host is repaired.
+
+When you see that signature:
+
+1. **If the caller's spec contains the exact line `sandbox-fallback: allowed`**,
+   retry once with the operator's own configured sandbox mode by omitting the
+   `--sandbox` flag entirely (codex then uses `sandbox_mode` from
+   `~/.codex/config.toml`, which the machine owner chose deliberately). Add
+   `SANDBOX: downgraded to user-config (workspace-write denied)` to your
+   report — the downgrade must never be silent.
+2. **Otherwise stop** and return `STATUS: unavailable` with
+   `REASON: sandbox denied writes — workspace-write ACE grant failing on this host`,
+   the exact codex message, and the remediation hints: run codex once from an
+   elevated shell so the setup helper can complete the write-ACE grant, or
+   restart codex background processes / clear the cached state under
+   `~/.codex/.sandbox`.
+
+Never jump straight to `danger-full-access` on a first attempt, and never fall
+back without reporting it.
 
 3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
 
@@ -88,6 +115,7 @@ OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
 CODEX SAID: [one-line summary of codex's final message, note any disagreement with the diff]
+SANDBOX: [only when downgraded: "downgraded to user-config (workspace-write denied)"]
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
 

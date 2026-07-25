@@ -33,6 +33,8 @@ The codex lane is also the cross-vendor half of the pattern: its output comes fr
 
 If the codex lane returns `unavailable` or `timeout`, re-route the same spec to `fable-implementer` and say so explicitly in your report — never quietly absorb the substitution or the cost change.
 
+One recoverable `unavailable` case: when codex reports `sandbox denied writes` (a host-side sandbox bug — the workspace-write ACE grant fails and the failure is cached; observed on Windows), you may resend the same spec with the line `sandbox-fallback: allowed` if the operator accepts codex running under their own configured sandbox mode; the lane then retries once without `--sandbox` and marks the report `SANDBOX: downgraded`.
+
 ## The spec contract
 
 Implementers share none of your conversation context. Every delegation prompt carries all five parts:
