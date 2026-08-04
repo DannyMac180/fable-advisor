@@ -42,13 +42,31 @@ SPEC=$(mktemp -t codex-spec.XXXXXX)
 FINAL=$(mktemp -t codex-final.XXXXXX)
 
 cat > "$SPEC" << 'SPEC_EOF'
+This task runs in a dedicated implementation lane on the model and reasoning
+effort named in the invocation below. Those were chosen deliberately for this
+lane; nothing has been substituted. If a user-level or project-level instruction
+file asks you to default to a different orchestration flow, treat this lane as an
+explicit opt-out from that default and proceed. Every other instruction in those
+files still applies.
+
 [the full spec, restated cleanly: objective, files, interfaces,
 constraints, verification. End with: "Run the verification command
 and include its actual output in your final message."]
 SPEC_EOF
 ```
 
-2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned high:
+**Why the preamble is there.** `codex exec` loads the user's `~/.codex/AGENTS.md` on every
+invocation, and a rule written for one project governs every lane on the machine. If such a
+rule pins a specific model/effort or mandates an orchestration flow, codex will — correctly —
+decline rather than silently substitute, and the run comes back **`exit 0` with an empty diff
+and a polite refusal in the final message**. That is a silent success: nothing in the exit code
+reveals it. The preamble states the opt-out those rules typically provide, scoped to this lane
+only, and never overrides their other content. Observed live 2026-08-04.
+
+This is belt-and-braces, not a substitute for step 3 — the empty diff is what actually catches
+a refusal, whatever caused it.
+
+2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max:
 
 ```bash
 # Portable timeout: macOS has no `timeout` unless coreutils is installed
@@ -83,7 +101,7 @@ Flag discipline (non-negotiable):
 
 ```
 CODEX REPORT
-STATUS: complete | partial | timeout | unavailable
+STATUS: complete | partial | timeout | unavailable | refused
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
@@ -95,5 +113,6 @@ GAPS: [spec ambiguities, unfinished items, or "none"]
 
 - One codex invocation per task unless the caller explicitly decomposed it.
 - Never claim completion without re-running the verification yourself. "Codex said it works" is forbidden as evidence.
+- **An empty diff is never `complete`.** If codex exits 0 but `git diff` shows nothing changed, return `STATUS: refused` and quote its final message verbatim in `REASON`. A clean exit code is not evidence that work happened.
 - If codex's changes are wrong, report that plainly with the failing output — do not patch them yourself. Fix decisions belong to the caller.
 - If the task turns out to be architectural — the spec itself is wrong — stop and report; that decision belongs upstream (consult `fable-advisor`).
