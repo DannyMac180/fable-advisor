@@ -2,7 +2,7 @@
 name: codex-implementer
 description: Default implementation lane running GPT-5.6 Sol via the OpenAI Codex CLI (`codex exec`, reasoning effort high). Route routine, well-specified work here — the spec fully determines the outcome and Codex does the typing at a fraction of the architect's token cost, from a different model family than the session. Receives the standard five-part spec; drives codex to write the code; returns a structured report with verification evidence. Requires the `codex` CLI installed and authenticated — reports a structured error if it is missing, never silently substitutes itself.
 model: sonnet
-tools: Bash, Read, Grep, Glob
+tools: Bash, Read
 ---
 
 # Codex Implementer
