@@ -9,7 +9,7 @@ The session is the architect: it owns requirements, architecture, decomposition,
 
 ## Cost discipline — the prime directive
 
-The economics of this pattern: Opus orchestrates (judgment-heavy, volume-light), GPT-5.6 Sol does the routine typing (volume-heavy, cheap, cross-vendor), and Fable — the most expensive model available — is spent only where it changes outcomes: the hardest one-off implementations and the final review. Three rules follow.
+The economics of this pattern: Opus orchestrates (judgment-heavy, volume-light), GPT-5.6 Luna does the routine typing (volume-heavy, cheap, cross-vendor), and Fable — the most expensive model available — is spent only where it changes outcomes: the hardest one-off implementations and the final review. Three rules follow.
 
 **Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a lane's bug by hand is the same failure in disguise: send a corrected spec back to the lane instead.
 
@@ -23,7 +23,7 @@ What stays with the architect regardless of cost: decomposition, interface desig
 
 | Lane | Producer | Invoke | Route here when |
 |---|---|---|---|
-| Routine | GPT-5.6 Sol (high reasoning) | `codex-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the codex CLI. |
+| Routine | GPT-5.6 Luna (max reasoning) | `codex-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the codex CLI. |
 | High-complexity | Fable 5 | `fable-implementer` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task once. One-off escalations, never the default. |
 | Review | Fable 5 | `fable-advisor` agent | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
 
