@@ -69,11 +69,27 @@ a refusal, whatever caused it.
 2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max:
 
 ```bash
-# Portable timeout: macOS has no `timeout` unless coreutils is installed
-T=$(command -v gtimeout || command -v timeout || true)
-[ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
+# Portable timeout: macOS has no `timeout` unless coreutils is installed.
+# Probe by RUNNING each candidate: a `command -v` hit is not proof it executes
+# (stale shell hash cache, or a symlink left dangling by a relinked coreutils).
+T=""
+for cand in gtimeout timeout; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" 1 true >/dev/null 2>&1; then
+    T="$cand"; break
+  fi
+done
+[ -z "$T" ] && echo "WARN: no working timeout binary — codex runs uncapped (brew install coreutils to cap)"
 
-${T:+$T 600} codex exec \
+# Build the prefix as positional params. Do NOT write `${T:+$T 600} codex ...`:
+# zsh does not word-split unquoted expansions, so "$T 600" collapses into a
+# single argv word and exec fails with 'no such file or directory: gtimeout 600'.
+# 540, not 600: the Bash tool's own timeout maxes out at 600000 ms, so a 600 s
+# shell cap ties with it and may lose the race. Keep the shell cap strictly
+# inside the tool ceiling so codex is killed by *this* timeout and the lane can
+# still report STATUS: timeout with whatever landed.
+if [ -n "$T" ]; then set -- "$T" 540; else set --; fi
+
+"$@" codex exec \
   --model gpt-5.6-luna \
   -c model_reasoning_effort=max \
   --sandbox workspace-write \
@@ -91,7 +107,7 @@ Flag discipline (non-negotiable):
 | `-c model_reasoning_effort=max` | Pins GPT-5.6 Luna to max reasoning — its top rung (Luna supports low/medium/high/xhigh/max; there is no `ultra`). |
 | `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root; works outside git repos. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
-| `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. |
+| `"$@"` timeout prefix | Nine-minute wall clock, deliberately inside the Bash tool's 600 s ceiling, when a *working* `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. Built with `set --` for shell portability — `${T:+$T 600}` breaks under zsh. |
 
 `--model gpt-5.6-luna` selects the Luna capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
 
