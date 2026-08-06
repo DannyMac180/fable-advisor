@@ -1,21 +1,22 @@
 {
   "name": "fable-advisor",
-  "version": "4.0.0",
-  "description": "Run your session on Opus as a full-time architect: it writes specs and verdicts, GPT-5.6 Luna at max reasoning (via Codex) does the routine typing, Fable 5 handles the high-complexity one-offs — and reviews every deliverable before it ships.",
+  "version": "5.0.0",
+  "description": "Run your session on Fable 5 as a full-time architect: it writes specs and verdicts, Claude Opus at high effort does the typing, GPT-5.6 Luna (via Codex) offers an optional cross-vendor implementation race — and GPT-5.6 Sol reviews every deliverable before it ships.",
   "author": {
-    "name": "Dan McAteer",
-    "url": "https://github.com/DannyMac180"
+    "name": "haorui",
+    "url": "https://github.com/haorui"
   },
-  "homepage": "https://github.com/DannyMac180/fable-advisor",
+  "homepage": "https://github.com/haorui/fable-advisor",
   "license": "MIT",
   "keywords": [
     "agents",
     "model-routing",
     "fable",
     "opus",
-    "advisor",
+    "reviewer",
     "orchestration",
     "architect",
-    "codex"
+    "codex",
+    "cross-vendor"
   ]
 }
