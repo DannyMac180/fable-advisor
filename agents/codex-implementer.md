@@ -95,6 +95,39 @@ Flag discipline (non-negotiable):
 
 `--model gpt-5.6-luna` selects the Luna capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
 
+### Sandbox preconditions — check these against the spec *before* invoking
+
+`--sandbox workspace-write` is the right default, but it is genuinely restrictive. Each of
+these has produced a wasted invocation; none announces itself clearly at runtime.
+
+| The spec needs… | What actually happens | What to do |
+|---|---|---|
+| `npm install` / any dependency fetch | No network. `ENOTFOUND registry.npmjs.org`. In one run codex "recovered" by copying `node_modules` from an unrelated sibling project rather than failing. | Pre-install the dep yourself and pre-warm `node_modules` before dispatching, or add `-c sandbox_workspace_write.network_access=true` when the task legitimately needs the registry. |
+| `docker build` / `docker run` to verify | The docker socket is outside the sandbox and unreachable. | Run the docker step yourself, outside codex, and hand codex the result. Don't make it part of codex's verification command. |
+| A commit, while running in a **git worktree** | In a linked worktree `.git` is a *file* pointing at `<main-repo>/.git/worktrees/<name>/`, which is outside the writable root — so `index.lock` can't be created and codex can never commit. | Let codex write the files; stage and commit yourself afterwards. Don't put `git commit` in the spec. |
+
+If the spec depends on any of these and you can't satisfy the precondition, say so before
+burning an invocation — that is a `STATUS: unavailable` with the reason, not a retry.
+
+**Do not "fix" the worktree case by making `.git` writable.** It is the obvious workaround
+and it is a sandbox escape. Tested on codex-cli 0.147.0, macOS seatbelt:
+
+- `writable_roots` is **not** recursive. Naming the repo parent does not grant
+  `.git/worktrees/<name>`; codex protects git internals and each path must be named.
+- Adding the whole `<main-repo>/.git` does let codex commit — and also lets it write
+  `.git/hooks/pre-commit`. That hook then runs **outside the sandbox, as you**, on your very
+  next git operation. Confirmed end to end: a sandboxed process planted a hook and the
+  payload executed on the orchestrator's next commit, writing a file outside every declared
+  writable root.
+- The narrow set that commits without the escape is
+  `[<worktree>, <main>/.git/worktrees/<name>, <main>/.git/objects, <main>/.git/refs, <main>/.git/logs]`
+  — it keeps `.git/hooks` and `.git/config` unwritable, so both the hook and the
+  `core.hooksPath` route are closed. It still fails softly on `packed-refs.lock`.
+
+Even the narrow set is five paths reconstructed per worktree, one omission away from the
+escape, to save a single `git commit`. Let codex write files; commit them yourself. That is
+also where you were going to inspect the diff anyway.
+
 3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
 
 ## What you return
