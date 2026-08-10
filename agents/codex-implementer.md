@@ -38,8 +38,15 @@ The prompt you receive should contain the standard five-part spec: **objective, 
 1. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other):
 
 ```bash
-SPEC=$(mktemp -t codex-spec.XXXXXX)
-FINAL=$(mktemp -t codex-final.XXXXXX)
+# One private scratch dir per lane; every temp file lives inside it.
+# NOTE: `mktemp -t codex-spec.XXXXXX` is wrong on macOS — BSD mktemp treats -t's
+# argument as a PREFIX, not a template, so the literal XXXXXX survives into the
+# name (codex-spec.XXXXXX.a1B2c3). Every lane then produces a path matching the
+# same `codex-spec.XXXXXX.*` glob, which is what makes cross-lane pickup possible.
+# Passing an explicit template as an operand substitutes the Xs on BSD and GNU alike.
+TMP="${TMPDIR:-/tmp}"; LANE=$(mktemp -d "${TMP%/}/codex-lane.XXXXXX")
+SPEC="$LANE/spec.md"
+FINAL="$LANE/final.txt"
 
 cat > "$SPEC" << 'SPEC_EOF'
 This task runs in a dedicated implementation lane on the model and reasoning
@@ -55,6 +62,15 @@ and include its actual output in your final message."]
 SPEC_EOF
 ```
 
+**Keep `$LANE` in one Bash call, and never re-derive it.** `$SPEC`/`$FINAL` only exist as
+shell variables for the life of a single tool call. If you write the spec in one call and
+invoke codex in another, do **not** recover the path with `ls /tmp/codex-spec.* | tail -1`:
+that sorts by random suffix rather than mtime, so under concurrency it happily hands you a
+*different lane's* spec and you implement someone else's task. Do not park the path in a
+fixed sidecar file (`/tmp/.codex_spec_path`) either — two lanes overwrite that
+deterministically, not just occasionally. Either do steps 1 and 2 in the same call, or echo
+`$LANE` and copy the literal path forward. Delete the dir when you are done.
+
 **Why the preamble is there.** `codex exec` loads the user's `~/.codex/AGENTS.md` on every
 invocation, and a rule written for one project governs every lane on the machine. If such a
 rule pins a specific model/effort or mandates an orchestration flow, codex will — correctly —
@@ -66,7 +82,26 @@ only, and never overrides their other content. Observed live 2026-08-04.
 This is belt-and-braces, not a substitute for step 3 — the empty diff is what actually catches
 a refusal, whatever caused it.
 
-2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max:
+2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max.
+
+**Run codex in the foreground, and set your Bash tool's own timeout to cover it.** Two
+failure modes, both observed repeatedly:
+
+- **Never background this call.** A lane that launches `codex exec` as a background task and
+  then ends its turn "waiting for the completion notification" waits forever — nothing is
+  wired to deliver that notification to a subagent. The symptom is a lane burning 60–100k
+  tokens across dozens of tool calls and returning with an empty working tree and no report,
+  while the caller assumes work is underway. If you catch yourself about to end a turn
+  without codex's exit status in hand, you have already failed: run it in the foreground.
+- **The shell timeout is a lie unless the tool timeout matches it.** Wrapping codex in a
+  shell cap does nothing if your Bash tool call defaults to 120 s — the tool kills the
+  command first and the documented cap never applies. Set the tool-call timeout explicitly
+  to its 600000 ms maximum, and keep the shell cap **strictly below** it (540 s). Equal
+  values are a race: if the tool wins you lose the graceful `STATUS: timeout` report,
+  because only the shell timeout leaves codex's partial work legible.
+
+If codex exits non-zero, dies without writing `"$FINAL"`, or leaves an empty diff, that is a
+result to report — not a reason to retry silently or to wait.
 
 ```bash
 # Portable timeout: macOS has no `timeout` unless coreutils is installed
@@ -112,6 +147,7 @@ GAPS: [spec ambiguities, unfinished items, or "none"]
 ## Rules
 
 - One codex invocation per task unless the caller explicitly decomposed it.
+- **Never end your turn with a codex process still running.** Foreground the call, collect its exit status, and report. "Waiting for a background notification" is a stall, not a state.
 - Never claim completion without re-running the verification yourself. "Codex said it works" is forbidden as evidence.
 - **An empty diff is never `complete`.** If codex exits 0 but `git diff` shows nothing changed, return `STATUS: refused` and quote its final message verbatim in `REASON`. A clean exit code is not evidence that work happened.
 - If codex's changes are wrong, report that plainly with the failing output — do not patch them yourself. Fix decisions belong to the caller.
