@@ -131,7 +131,11 @@ to great lengths to detect. Define one shared status enum in SKILL.md with an
 architect action per status (e.g. `refused` → prepend/adjust preamble once, then
 escalate; `partial` → corrected spec with the gap named; `blocked` → architect
 decision). Add `REASON:` to the standard report schema (today it appears only in
-the preflight example, though a rule requires it for `refused`).
+the preflight example, though a rule requires it for `refused`). Also make the
+report contract classify out-of-scope working-tree changes as *unattributed*
+(the architect and sibling lanes edit other files concurrently) rather than
+attributing them to codex — a wrapper misattributed a legitimate architect
+edit as codex misbehavior, observed live 2026-08-11.
 
 ### 7. Document timeout detection
 The wrapper is told to "report `STATUS: timeout`" but not how to know: state
@@ -185,6 +189,11 @@ found in production):
   a ~10-line script can lint this).
 - Optional smoke job (manual trigger): preflight against a real codex install.
 
+**Status: deferred pending operator decision (2026-08-11).** The session
+harness's permission classifier twice blocked lane dispatches delegating
+CI-workflow creation. Apply by hand or approve a dispatch explicitly; the
+check list above is fully specified and mechanical.
+
 ### 12. Manifest completeness
 `marketplace.json` has no version, license, keywords, or category on the plugin
 entry, and its two descriptions drift independently from `plugin.json`'s. Add
@@ -237,6 +246,19 @@ advisor gets the diff path anyway, per item 4).
 
 ---
 
+### 18. Effort-dial parity for the codex lane
+*(added mid-execution, 2026-08-11)* The packaged agent hardcodes
+`-c model_reasoning_effort=max`; deployed practice has moved to caller-chosen
+per-task effort (low→max) alongside the Luna/Terra model choice, and a lane
+running under those routing parameters correctly declined to adopt the repo's
+older hardcode. Bring the repo forward:
+`-c model_reasoning_effort="${FABLE_ADVISOR_CODEX_EFFORT:-max}"`, and document
+Model/Effort as spec-level routing parameters the architect sets per task
+(effort is the cost dial, per item 16).
+
+**Done when.** The invocation uses the env-defaulted effort and the contract
+section names Model/Effort as caller-set routing parameters.
+
 ## Suggested sequencing
 
 1. **v4.0.1** — items 1–5 (correctness; item 17 deferred — see its status
@@ -244,7 +266,8 @@ advisor gets the diff path anyway, per item 4).
    SKILL.md; highest payoff per line.
 2. **v4.1.0** — items 6–12 + 16 (contracts, pins, CI, manifests, liberal-Luna
    doctrine).
-3. **v4.1.x** — items 13–15 (docs-only polish), safe to trickle.
+3. **v4.1.x** — items 13–15 + 18 (docs-only polish plus effort-dial parity),
+   safe to trickle.
 
 Items 1, 4, 5, and 6 change agent behavior and deserve a live smoke test with a
 real codex install before tagging.

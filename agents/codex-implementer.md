@@ -39,11 +39,11 @@ The prompt you receive should contain the standard five-part spec: **objective, 
 
 Steps 1–2 are **one fenced block, run as a single Bash tool call** — Claude Code starts a fresh shell for every Bash call, so `$SPEC` and `$FINAL` set in one call are unset in the next. Never split this block.
 
-1–2. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other) — then invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max, and print the final message before the shell exits:
+1–2. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other) — then invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max, and print the exit code and final message before the shell exits:
 
 ```bash
-SPEC=$(mktemp -t codex-spec.XXXXXX)
-FINAL=$(mktemp -t codex-final.XXXXXX)
+SPEC=$(mktemp "${TMPDIR:-/tmp}/codex-spec.XXXXXX")
+FINAL=$(mktemp "${TMPDIR:-/tmp}/codex-final.XXXXXX")
 
 cat > "$SPEC" << 'SPEC_EOF'
 This task runs in a dedicated implementation lane on the model and reasoning
@@ -57,20 +57,24 @@ files still applies.
 constraints, verification. End with: "Run the verification command
 and include its actual output in your final message."]
 SPEC_EOF
+# EXIT trap fires when this shell exits — after the final message is printed below
+trap 'rm -f "$SPEC" "$FINAL"' EXIT
 
 # Portable timeout: macOS has no `timeout` unless coreutils is installed
 T=$(command -v gtimeout || command -v timeout || true)
 [ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
 
 ${T:+$T 600} codex exec \
-  --model gpt-5.6-luna \
+  --model "${FABLE_ADVISOR_CODEX_MODEL:-gpt-5.6-luna}" \
   -c model_reasoning_effort=max \
   --sandbox workspace-write \
   --skip-git-repo-check \
   --cd "$(pwd)" \
   --output-last-message "$FINAL" \
   - < "$SPEC"
+RC=$?
 
+echo "--- codex exit code: $RC ---"
 echo "--- codex final message ---"
 cat "$FINAL"
 ```
@@ -94,9 +98,9 @@ Flag discipline (non-negotiable):
 | `-c model_reasoning_effort=max` | Pins GPT-5.6 Luna to max reasoning — its top rung (Luna supports low/medium/high/xhigh/max; there is no `ultra`). |
 | `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
-| `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. |
+| `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. `timeout`/`gtimeout` exit **124** when the cap fires — the `RC` the block echoes is how you know: `RC=124` ⇒ `STATUS: timeout`, reported with whatever landed in the diff. |
 
-`--model gpt-5.6-luna` selects the Luna capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
+`--model "${FABLE_ADVISOR_CODEX_MODEL:-gpt-5.6-luna}"` selects the Luna capability tier by default; the env var lets users repin without editing plugin files that `claude plugin update` overwrites. If the caller's spec names a different codex model, use that instead — the slug is a documented default, not a constant, and this file is its only normative site (README and the orchestration skill point here).
 
 A git repo is required. The refusal detector step 3 depends on is `git diff`/`git status`, and both fail outright outside a repo — `--skip-git-repo-check` does not lift this requirement.
 
@@ -107,12 +111,17 @@ A git repo is required. The refusal detector step 3 depends on is `git diff`/`gi
 ```
 CODEX REPORT
 STATUS: complete | partial | timeout | unavailable | refused
+REASON: [required for refused/unavailable/timeout — exact error or refusal, verbatim; omit otherwise]
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
 CODEX SAID: [one-line summary of codex's final message, note any disagreement with the diff]
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
+
+These statuses are this lane's subset of the shared status vocabulary — the orchestration skill's status contract defines the architect's action for each.
+
+Out-of-scope working-tree changes — dirty paths the spec never named — are reported as **unattributed**: the architect and sibling lanes edit other files concurrently, so a change outside the spec is never auto-attributed to codex. List the paths; leave attribution to the architect.
 
 ## Rules
 

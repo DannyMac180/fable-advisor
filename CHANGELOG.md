@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.1.0] - 2026-08-11
+
+### Added
+
+- Unified lane status vocabulary (complete, partial, refused, timeout, unavailable, blocked) with an architect action per status.
+- REASON line in the codex report schema.
+- Unattributed-changes rule: out-of-scope working-tree changes are reported as unattributed, not blamed on the lane.
+- Timeout detection: timeout/gtimeout exit code 124 maps to STATUS: timeout.
+- FABLE_ADVISOR_CODEX_MODEL env override; agents/codex-implementer.md is now the only normative site for the codex model slug.
+- Liberal routing posture: Luna is the default routine lane, Terra the overflow, and the effort dial governs cost.
+
+### Changed
+
+- Temp-file cleanup trap and portable mktemp in the merged codex invocation block.
+- One canonical description reused verbatim across plugin.json and both marketplace.json blurbs; the marketplace plugin entry gains license, keywords, and category.
+- Retro-tagged v3.1 at b3b50a9.
+
 ## [4.0.1] - 2026-08-11
 
 ### Added
