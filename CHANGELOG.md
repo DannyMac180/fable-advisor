@@ -1,0 +1,57 @@
+# Changelog
+
+## [4.0.1] - 2026-08-11
+
+### Added
+
+- Preflight auth probe via a Codex login-status check.
+- Git repo requirement for the codex-implementer lane.
+- Diff-path handoff for the read-only fable-advisor reviewer.
+
+### Changed
+
+- Merged the Codex invocation into a single Bash-call block because shell state does not persist across tool calls; the final message is read in the same call.
+- Removed the claim that the codex-implementer lane works outside git repositories; the empty-diff refusal detector depends on git diff.
+- Required per-racer git worktree isolation for lane racing.
+
+## [4.0.0] - 2026-07-25
+
+### Changed
+
+- Opus orchestrates as architect, Codex is the routine implementation lane, and Fable escalates high-complexity work and reviews every deliverable. ([2cf102d], 2026-07-25)
+- Post-v4.0.0-tag commits shipped without a version bump:
+  - Repinned the routine lane to GPT-5.6 Luna at max reasoning. ([3088622], 2026-08-04)
+  - Made codex-implementer opt out of machine-wide orchestration defaults. ([ad2bdc3], 2026-08-04)
+
+## [3.1] - 2026-07-09
+
+### Changed
+
+- Upgraded the Codex lane to GPT-5.6 Sol. ([8236e9b], 2026-07-09)
+- Related untagged README follow-up. ([b3b50a9], 2026-07-09)
+
+## [3.0.0] - 2026-07-08
+
+### Changed
+
+- Grok 4.5 replaces the Sonnet implementer lane. ([92e35f4], 2026-07-08)
+
+## [2.1.0] - 2026-07-04
+
+### Added
+
+- Cost-discipline doctrine for orchestration. ([b12f1fb], 2026-07-04; [3c1846c], 2026-07-04)
+
+## [2.0.0] - 2026-07-03
+
+### Added
+
+- Architect-as-orchestrator primary pattern.
+- Orchestration routing doctrine skill.
+- Codex-implementer GPT-5.5 lane. ([4a65f4e], 2026-07-03)
+
+## [1.0.0] - 2026-07-02
+
+### Added
+
+- fable-advisor, advisor-only. ([dd8cd2e], 2026-07-02)

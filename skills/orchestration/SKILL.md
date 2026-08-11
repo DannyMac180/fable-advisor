@@ -47,7 +47,7 @@ A spec you can't finish writing is a signal the decision isn't made yet — that
 
 ## Parallelism
 
-Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, run `codex-implementer` and `fable-implementer` on the same spec and let the architect pick the stronger diff — two model families, one judged result.
+Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. The no-shared-files rule applies to this ordinary parallel case. For high-stakes work, racing `codex-implementer` and `fable-implementer` on the same spec requires each racer to run in its own git worktree, with each lane told its own working root; for the codex lane, its `--cd` argument points at that racer's worktree. The architect diffs both worktrees' results and picks the stronger one.
 
 ## Commitment boundaries and the final review
 
@@ -57,7 +57,7 @@ Consult `fable-advisor` (read-only, verdict in under 300 words) at the moments t
 - Whenever the same problem has resisted two distinct attempts
 - **Always, once, at the end of a deliverable** — the advisor reads the accumulated changes with fresh eyes, against the stated goal rather than the conversation, and returns ship / fix-first / rethink. The architect does not report done before this review.
 
-Pass it the decision (or, for final review, the diff and the stated goal), the constraints, and the options considered. Act on the verdict or surface the disagreement — never silently ignore it.
+For a final review, the architect (the caller) writes the accumulated diff to a file (for example, `git diff > /tmp/<deliverable>.diff` or a path under the session directory) and passes that file's PATH plus the stated goal to `fable-advisor`; the advisor expects a diff PATH, never an inline pasted diff. The advisor Reads the diff file plus the touched source files it names against the stated goal. For other reviews, pass it the decision, the constraints, and the options considered. Act on the verdict or surface the disagreement — never silently ignore it.
 
 One honest caveat: when the deliverable came from `fable-implementer`, the reviewer and the implementer are the same model. The final review is still worth it — it reads the diff in a clean context, against the goal rather than the conversation — but it is a fresh-eyes check there, not an independent-model check. Cross-vendor independence comes from the codex lane.
 

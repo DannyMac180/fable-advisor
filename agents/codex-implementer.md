@@ -14,8 +14,10 @@ You are the default implementation lane. You do not write the code yourself — 
 First action, always:
 
 ```bash
-command -v codex && codex --version
+command -v codex && codex --version && codex login status
 ```
+
+`codex login status` exits non-zero when logged out (verified on codex-cli 0.146.1) — it catches a dead login here instead of mid-run at `exec` time.
 
 If codex is not installed or not authenticated, **stop immediately** and return:
 
@@ -35,7 +37,9 @@ The prompt you receive should contain the standard five-part spec: **objective, 
 
 ## How you run codex
 
-1. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other):
+Steps 1–2 are **one fenced block, run as a single Bash tool call** — Claude Code starts a fresh shell for every Bash call, so `$SPEC` and `$FINAL` set in one call are unset in the next. Never split this block.
+
+1–2. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other) — then invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max, and print the final message before the shell exits:
 
 ```bash
 SPEC=$(mktemp -t codex-spec.XXXXXX)
@@ -53,6 +57,22 @@ files still applies.
 constraints, verification. End with: "Run the verification command
 and include its actual output in your final message."]
 SPEC_EOF
+
+# Portable timeout: macOS has no `timeout` unless coreutils is installed
+T=$(command -v gtimeout || command -v timeout || true)
+[ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
+
+${T:+$T 600} codex exec \
+  --model gpt-5.6-luna \
+  -c model_reasoning_effort=max \
+  --sandbox workspace-write \
+  --skip-git-repo-check \
+  --cd "$(pwd)" \
+  --output-last-message "$FINAL" \
+  - < "$SPEC"
+
+echo "--- codex final message ---"
+cat "$FINAL"
 ```
 
 **Why the preamble is there.** `codex exec` loads the user's `~/.codex/AGENTS.md` on every
@@ -66,36 +86,21 @@ only, and never overrides their other content. Observed live 2026-08-04.
 This is belt-and-braces, not a substitute for step 3 — the empty diff is what actually catches
 a refusal, whatever caused it.
 
-2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max:
-
-```bash
-# Portable timeout: macOS has no `timeout` unless coreutils is installed
-T=$(command -v gtimeout || command -v timeout || true)
-[ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
-
-${T:+$T 600} codex exec \
-  --model gpt-5.6-luna \
-  -c model_reasoning_effort=max \
-  --sandbox workspace-write \
-  --skip-git-repo-check \
-  --cd "$(pwd)" \
-  --output-last-message "$FINAL" \
-  - < "$SPEC"
-```
-
 Flag discipline (non-negotiable):
 
 | Flag | Why |
 |---|---|
 | `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Never `danger-full-access`. |
 | `-c model_reasoning_effort=max` | Pins GPT-5.6 Luna to max reasoning — its top rung (Luna supports low/medium/high/xhigh/max; there is no `ultra`). |
-| `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root; works outside git repos. |
+| `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
 | `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. |
 
 `--model gpt-5.6-luna` selects the Luna capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
 
-3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
+A git repo is required. The refusal detector step 3 depends on is `git diff`/`git status`, and both fail outright outside a repo — `--skip-git-repo-check` does not lift this requirement.
+
+3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message where the merged block printed it — the shell that knew `$FINAL` is gone. Codex's claim of success is not evidence; your re-run is.
 
 ## What you return
 

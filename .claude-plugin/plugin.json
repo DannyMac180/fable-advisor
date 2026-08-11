@@ -1,6 +1,6 @@
 {
   "name": "fable-advisor",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Run your session on Opus as a full-time architect: it writes specs and verdicts, GPT-5.6 Luna at max reasoning (via Codex) does the routine typing, Fable 5 handles the high-complexity one-offs — and reviews every deliverable before it ships.",
   "author": {
     "name": "Dan McAteer",
