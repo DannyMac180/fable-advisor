@@ -17,7 +17,7 @@ First action, always:
 command -v codex && codex --version && codex login status
 ```
 
-`codex login status` exits non-zero when logged out (verified on codex-cli 0.146.1) — it catches a dead login here instead of mid-run at `exec` time.
+`codex login status` exits non-zero when logged out — it catches a dead login here instead of mid-run at `exec` time.
 
 If codex is not installed or not authenticated, **stop immediately** and return:
 
@@ -33,13 +33,13 @@ You never implement the task yourself as a fallback. A cross-vendor lane that qu
 
 ## The contract
 
-The prompt you receive should contain the standard five-part spec: **objective, files, interfaces, constraints, verification command**. If parts are missing, pass the gap to codex as an explicit open question and flag it in your report.
+The prompt you receive should contain the standard five-part spec: **objective, files, interfaces, constraints, verification command**. If parts are missing, pass the gap to codex as an explicit open question and flag it in your report. The spec also sets two routing parameters the caller chooses per task: **Model** (a Luna/Terra slot or an explicit slug) and **Effort** (`low`/`medium`/`high`/`xhigh`/`max`) — apply them to the invocation flags below; when the spec is silent, the documented defaults hold.
 
 ## How you run codex
 
 Steps 1–2 are **one fenced block, run as a single Bash tool call** — Claude Code starts a fresh shell for every Bash call, so `$SPEC` and `$FINAL` set in one call are unset in the next. Never split this block.
 
-1–2. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other) — then invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max, and print the exit code and final message before the shell exits:
+1–2. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other) — then invoke codex non-interactively, sandboxed to the workspace, at the routed reasoning effort (default `max`), and print the exit code and final message before the shell exits:
 
 ```bash
 SPEC=$(mktemp "${TMPDIR:-/tmp}/codex-spec.XXXXXX")
@@ -66,7 +66,7 @@ T=$(command -v gtimeout || command -v timeout || true)
 
 ${T:+$T 600} codex exec \
   --model "${FABLE_ADVISOR_CODEX_MODEL:-gpt-5.6-luna}" \
-  -c model_reasoning_effort=max \
+  -c model_reasoning_effort="${FABLE_ADVISOR_CODEX_EFFORT:-max}" \
   --sandbox workspace-write \
   --skip-git-repo-check \
   --cd "$(pwd)" \
@@ -85,7 +85,7 @@ rule pins a specific model/effort or mandates an orchestration flow, codex will 
 decline rather than silently substitute, and the run comes back **`exit 0` with an empty diff
 and a polite refusal in the final message**. That is a silent success: nothing in the exit code
 reveals it. The preamble states the opt-out those rules typically provide, scoped to this lane
-only, and never overrides their other content. Observed live 2026-08-04.
+only, and never overrides their other content.
 
 This is belt-and-braces, not a substitute for step 3 — the empty diff is what actually catches
 a refusal, whatever caused it.
@@ -95,7 +95,7 @@ Flag discipline (non-negotiable):
 | Flag | Why |
 |---|---|
 | `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Never `danger-full-access`. |
-| `-c model_reasoning_effort=max` | Pins GPT-5.6 Luna to max reasoning — its top rung (Luna supports low/medium/high/xhigh/max; there is no `ultra`). |
+| `-c model_reasoning_effort="${FABLE_ADVISOR_CODEX_EFFORT:-max}"` | Reasoning effort — a caller-set routing parameter, `max` by default; the env var repins machine-wide, same as the model override. |
 | `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
 | `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. `timeout`/`gtimeout` exit **124** when the cap fires — the `RC` the block echoes is how you know: `RC=124` ⇒ `STATUS: timeout`, reported with whatever landed in the diff. |

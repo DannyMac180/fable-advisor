@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.1.1] - 2026-08-11
+
+### Changed
+
+- Architect-typing rule resolved: type implementation only when the spec would be longer than the diff, and say so in the report — stated identically in the README snippet and the skill's deciding rule.
+- Verification labor reconciled with cost discipline: lanes read full diffs and quote evidence; the architect reads reports and spot-checks scoped diffs; the full deliverable diff enters architect context only at commitment boundaries.
+- README accuracy pass: the fable→opus downgrade names its two exact files; the CLAUDE_CODE_SUBAGENT_MODEL global-override consequence is stated; the codex lane's Sonnet wrapper cost is acknowledged.
+- Perishable dated facts (observed-live date, Luna tier list, codex-cli version) removed from agent prompt text or relocated to the README requirements.
+- Reasoning effort is now caller-routable: `-c model_reasoning_effort="${FABLE_ADVISOR_CODEX_EFFORT:-max}"`, with Model/Effort documented as spec-level routing parameters.
+
 ## [4.1.0] - 2026-08-11
 
 ### Added

@@ -29,7 +29,7 @@ What stays with the architect regardless of cost: decomposition, interface desig
 | High-complexity | Fable 5 | `fable-implementer` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task once. One-off escalations, never the default. |
 | Review | Fable 5 | `fable-advisor` agent | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
 
-Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default codex lane; you will verify anyway. A lot, and mistakes are costly → escalate to `fable-implementer`, or keep that piece with the architect. A routine-lane task that fails its spec once gets a corrected spec; twice, it escalates to Fable — repetition is evidence the task was misclassified.
+Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default codex lane; you will verify anyway. A lot, and mistakes are costly → escalate to `fable-implementer`, or keep that piece with the architect, typing implementation yourself only when the spec would be longer than the diff — and saying so in your report. A routine-lane task that fails its spec once gets a corrected spec; twice, it escalates to Fable — repetition is evidence the task was misclassified.
 
 The codex lane is also the cross-vendor half of the pattern: its output comes from a non-Anthropic family, so the Claude architect's verification and the Fable review are genuine cross-vendor checks, not same-family self-review.
 
@@ -76,3 +76,5 @@ One honest caveat: when the deliverable came from `fable-implementer`, the revie
 ## Verification
 
 Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
+
+The verification labor divides by cost: lanes read their full diffs and quote the evidence; the architect reads reports and spot-checks scoped diffs; the full deliverable diff enters the architect's context only at commitment boundaries — where the advisor receives it by file path anyway.

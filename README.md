@@ -41,11 +41,11 @@ Then start your session as the architect:
 ## Requirements
 
 - **Claude Code ≥ 2.1.170** with a subscription that includes Fable 5 (Pro, Max, Team, or Enterprise — all current consumer plans qualify).
-- **No Fable access** (e.g. API-key billing)? Change `model: fable` → `model: opus` in the advisor and implementer files. Same pattern, the Fable roles shift down to Opus.
-- **Codex lane (the default implementer):** the `codex-implementer` agent needs the [OpenAI Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`, then `codex login`). It invokes **GPT-5.6 Luna** — the pinned slug and reasoning effort live in one normative place, [`agents/codex-implementer.md`](agents/codex-implementer.md), which also honors a `FABLE_ADVISOR_CODEX_MODEL` env override for repinning without editing files that `claude plugin update` overwrites. GPT-5.6 access may be limited during preview; without model access, an installed/authenticated CLI, or successful authentication, the agent reports `STATUS: unavailable` — it never silently falls back to a Claude model — and the Fable lanes remain unaffected.
+- **No Fable access** (e.g. API-key billing)? Change `model: fable` → `model: opus` in the two files that pin it — `agents/fable-advisor.md` and `agents/fable-implementer.md`; the codex lane's wrapper is `model: sonnet` and carries no Fable pin. Same pattern, the Fable roles shift down to Opus.
+- **Codex lane (the default implementer):** the `codex-implementer` agent needs the [OpenAI Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`, then `codex login`). It invokes **GPT-5.6 Luna** — the pinned slug and reasoning effort live in one normative place, [`agents/codex-implementer.md`](agents/codex-implementer.md), which also honors `FABLE_ADVISOR_CODEX_MODEL` and `FABLE_ADVISOR_CODEX_EFFORT` env overrides for repinning without editing files that `claude plugin update` overwrites. GPT-5.6 access may be limited during preview; without model access, an installed/authenticated CLI, or successful authentication, the agent reports `STATUS: unavailable` — it never silently falls back to a Claude model — and the Fable lanes remain unaffected. That no-fallback guarantee is about who writes the code: the lane's wrapper is itself a Sonnet agent spending Claude tokens on preflight, supervision, and independent re-verification. Perishable facts, as of codex-cli 0.146.1 (2026-08): `codex login status` exits non-zero when logged out, and Luna's reasoning tiers run low/medium/high/xhigh/max — there is no `ultra`.
 - Heads-up: if a pinned Claude model isn't available on your account, Claude Code silently falls back to your session model — the pattern degrades quietly rather than erroring. If results feel unremarkable, check your plan. (This quiet fallback applies only to Claude model pins — the codex lane always fails loudly with a structured error.)
 
-Model resolution order in Claude Code: `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` parameter → agent frontmatter → session model.
+Model resolution order in Claude Code: `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` parameter → agent frontmatter → session model. The consequence: a globally-set `CLAUDE_CODE_SUBAGENT_MODEL` outranks every frontmatter pin this plugin ships — unset it, or scope it per invocation, if you want the pins to hold.
 
 ## Use it
 
@@ -62,10 +62,12 @@ To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
 ```
 You are the architect — minimize your own token volume. Delegate all
-implementation through the orchestration skill's routing table (never
-type code yourself), delegate broad codebase exploration to cheap
-read-only agents, verify evidence before accepting any lane's report,
-and get a fable-advisor review before reporting any deliverable done.
+implementation through the orchestration skill's routing table (typing
+implementation yourself only when the spec would be longer than the
+diff — and saying so in your report), delegate broad codebase
+exploration to cheap read-only agents, verify evidence before accepting
+any lane's report, and get a fable-advisor review before reporting any
+deliverable done.
 ```
 
 ## Commitment boundaries and the final review
