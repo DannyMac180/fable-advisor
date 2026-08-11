@@ -9,7 +9,7 @@ The session is the architect: it owns requirements, architecture, decomposition,
 
 ## Cost discipline — the prime directive
 
-The economics of this pattern: Opus orchestrates (judgment-heavy, volume-light), GPT-5.6 Luna does the routine typing (volume-heavy, cheap, cross-vendor), and Fable — the most expensive model available — is spent only where it changes outcomes: the hardest one-off implementations and the final review. Three rules follow.
+The economics of this pattern: Opus orchestrates (judgment-heavy, volume-light), GPT-5.6 Luna does the routine typing (volume-heavy, cheap, cross-vendor), and Fable — the most expensive model available — is spent only where it changes outcomes: the hardest one-off implementations and the final review. Four rules follow.
 
 **Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a lane's bug by hand is the same failure in disguise: send a corrected spec back to the lane instead.
 
@@ -17,21 +17,33 @@ The economics of this pattern: Opus orchestrates (judgment-heavy, volume-light),
 
 **Reason once, then hand off.** Do the hard thinking — the architecture, the interface design, the debugging hypothesis — in one pass, capture it in the spec, and let the lane carry it from there. Re-deriving decisions across turns burns the premium twice.
 
+**Dispatch liberally.** The routine lane is the default destination for any unit of work a five-part spec can carry — liberally, not as a last resort. File-disjoint specs fan out as parallel routine lanes in a single message. Cost is governed by the effort dial — drop effort for mechanical bulk — not by rationing dispatches. Luna is the project-default slot, Terra the overflow/rate-limit fallback.
+
 What stays with the architect regardless of cost: decomposition, interface design, hypothesis selection when debugging, spec writing, lane routing, and judging verification evidence. Those tokens are what the premium is for — everything else is a candidate for delegation.
 
 ## The lanes
 
 | Lane | Producer | Invoke | Route here when |
 |---|---|---|---|
-| Routine | GPT-5.6 Luna (max reasoning) | `codex-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the codex CLI. |
+| Routine | GPT-5.6 Luna (the codex lane's pinned model — see `agents/codex-implementer.md`) | `codex-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the codex CLI. |
 | High-complexity | Fable 5 | `fable-implementer` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task once. One-off escalations, never the default. |
 | Review | Fable 5 | `fable-advisor` agent | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
 
-Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default codex lane; you will verify anyway. A lot, and mistakes are costly → escalate to `fable-implementer`, or keep that piece with the architect. A routine-lane task that fails its spec once gets a corrected spec; twice, it escalates to Fable — repetition is evidence the task was misclassified.
+Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default codex lane; you will verify anyway. A lot, and mistakes are costly → escalate to `fable-implementer`, or keep that piece with the architect, typing implementation yourself only when the spec would be longer than the diff — and saying so in your report. A routine-lane task that fails its spec once gets a corrected spec; twice, it escalates to Fable — repetition is evidence the task was misclassified.
 
 The codex lane is also the cross-vendor half of the pattern: its output comes from a non-Anthropic family, so the Claude architect's verification and the Fable review are genuine cross-vendor checks, not same-family self-review.
 
-If the codex lane returns `unavailable` or `timeout`, re-route the same spec to `fable-implementer` and say so explicitly in your report — never quietly absorb the substitution or the cost change.
+## The status contract
+
+Every lane report leads with one status from a shared vocabulary: `complete | partial | refused | timeout | unavailable | blocked`. The codex lane emits `complete | partial | refused | timeout | unavailable`; the fable lane emits `complete | partial | blocked` — each agent file names its own subset and defers here for the routing. Each status carries one architect action:
+
+| Status | Architect action |
+|---|---|
+| `complete` | Verify the evidence — read the diff, re-run or spot-check the verification command. |
+| `partial` | Corrected spec back to the same lane, naming the gap explicitly. |
+| `refused` | One re-dispatch with a clarified spec; a second refusal escalates to `fable-implementer`. |
+| `timeout` / `unavailable` | Re-route the same spec to `fable-implementer` and say so explicitly in your report — never quietly absorb the substitution or the cost change. |
+| `blocked` | The decision returns to the architect: resolve it (or consult `fable-advisor`) before any re-dispatch — never hand the ambiguity back down unresolved. |
 
 ## The spec contract
 
@@ -47,7 +59,7 @@ A spec you can't finish writing is a signal the decision isn't made yet — that
 
 ## Parallelism
 
-Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, run `codex-implementer` and `fable-implementer` on the same spec and let the architect pick the stronger diff — two model families, one judged result.
+Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. The no-shared-files rule applies to this ordinary parallel case. For high-stakes work, racing `codex-implementer` and `fable-implementer` on the same spec requires each racer to run in its own git worktree, with each lane told its own working root; for the codex lane, its `--cd` argument points at that racer's worktree. The architect diffs both worktrees' results and picks the stronger one.
 
 ## Commitment boundaries and the final review
 
@@ -57,10 +69,12 @@ Consult `fable-advisor` (read-only, verdict in under 300 words) at the moments t
 - Whenever the same problem has resisted two distinct attempts
 - **Always, once, at the end of a deliverable** — the advisor reads the accumulated changes with fresh eyes, against the stated goal rather than the conversation, and returns ship / fix-first / rethink. The architect does not report done before this review.
 
-Pass it the decision (or, for final review, the diff and the stated goal), the constraints, and the options considered. Act on the verdict or surface the disagreement — never silently ignore it.
+For a final review, the architect (the caller) writes the accumulated diff to a file (for example, `git diff > /tmp/<deliverable>.diff` or a path under the session directory) and passes that file's PATH plus the stated goal to `fable-advisor`; the advisor expects a diff PATH, never an inline pasted diff. The advisor Reads the diff file plus the touched source files it names against the stated goal. For other reviews, pass it the decision, the constraints, and the options considered. Act on the verdict or surface the disagreement — never silently ignore it.
 
 One honest caveat: when the deliverable came from `fable-implementer`, the reviewer and the implementer are the same model. The final review is still worth it — it reads the diff in a clean context, against the goal rather than the conversation — but it is a fresh-eyes check there, not an independent-model check. Cross-vendor independence comes from the codex lane.
 
 ## Verification
 
 Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
+
+The verification labor divides by cost: lanes read their full diffs and quote the evidence; the architect reads reports and spot-checks scoped diffs; the full deliverable diff enters the architect's context only at commitment boundaries — where the advisor receives it by file path anyway.

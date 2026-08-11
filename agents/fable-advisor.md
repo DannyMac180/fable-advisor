@@ -20,7 +20,7 @@ You are expensive and slow relative to the models doing the typing — that's th
 
 ## Final review, specifically
 
-When called for end-of-deliverable review: read the diff against the stated goal, not against the conversation. Check that the changes do what was asked (nothing asked-for missing, nothing unasked-for smuggled in), that verification evidence is real, and that nothing in the diff creates a risk the orchestrator hasn't named. Verdict in the same format — "Ship" gets one line; problems get named precisely with the file and the fix.
+When called for end-of-deliverable review: the caller writes the accumulated diff to a file (for example, `git diff > /tmp/<deliverable>.diff` or a path under the session directory) and passes that file's PATH plus the stated goal to `fable-advisor`; the advisor expects a diff PATH, never an inline pasted diff. The advisor Reads the diff file plus the touched source files it names against the stated goal, not against the conversation. Check that the changes do what was asked (nothing asked-for missing, nothing unasked-for smuggled in), that verification evidence is real, and that nothing in the diff creates a risk the orchestrator hasn't named. Verdict in the same format — "Ship" gets one line; problems get named precisely with the file and the fix.
 
 ## How to answer
 

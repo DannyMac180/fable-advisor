@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
-  "version": "4.0.0",
-  "description": "Run your session on Opus as a full-time architect: it writes specs and verdicts, GPT-5.6 Luna at max reasoning (via Codex) does the routine typing, Fable 5 handles the high-complexity one-offs — and reviews every deliverable before it ships.",
+  "version": "4.1.1",
+  "description": "Architect-orchestrator plugin: the session designs, routes, and verifies; a cross-vendor codex lane does the routine typing; Fable 5 handles escalations and the mandatory final review.",
   "author": {
     "name": "Dan McAteer",
     "url": "https://github.com/DannyMac180"

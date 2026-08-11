@@ -6,11 +6,13 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 
 | Lane | Producer | Invocation | Route here when |
 |---|---|---|---|
-| Routine | **GPT-5.6 Luna** (max reasoning) | `codex-implementer` agent (default) | The spec fully determines the outcome — Codex does the typing via the [Codex CLI](https://github.com/openai/codex) |
+| Routine | **GPT-5.6 Luna** (the codex lane's pinned model — see [`agents/codex-implementer.md`](agents/codex-implementer.md)) | `codex-implementer` agent (default) | The spec fully determines the outcome — Codex does the typing via the [Codex CLI](https://github.com/openai/codex) |
 | High-complexity | **Fable 5** | `fable-implementer` agent | One-off tasks where judgment the spec can't capture decides the outcome: subtle concurrency, hard debugging, security-sensitive paths, wide refactors |
 | Review | **Fable 5** | `fable-advisor` agent | Commitment boundaries, and **always once at the end** — the advisor reviews the accumulated changes before the architect reports done |
 
-Tokens route by capability: Opus emits judgment and specs, the cheap cross-vendor lane emits the bulk of the code, and Fable — the most expensive model available — is spent only where it changes outcomes: the hardest implementations and the final review. Because the routine lane is a *different model family* than the architect, cross-vendor review is built into the routing, not bolted on. For high-stakes work, run `codex-implementer` and `fable-implementer` on the same spec and let the architect pick the stronger diff.
+The routine lane is the default destination, liberally: any unit of work a five-part spec can carry goes there, file-disjoint specs fan out as parallel lanes in a single message, and cost is governed by the lane's effort dial (drop effort for mechanical bulk), not by rationing dispatches — Luna is the project-default slot, Terra the overflow/rate-limit fallback.
+
+Tokens route by capability: Opus emits judgment and specs, the cheap cross-vendor lane emits the bulk of the code, and Fable — the most expensive model available — is spent only where it changes outcomes: the hardest implementations and the final review. Because the routine lane is a *different model family* than the architect, cross-vendor review is built into the routing, not bolted on. For high-stakes work, race `codex-implementer` and `fable-implementer` on the same spec only in separate git worktrees: tell each lane its own working root, point the codex lane's `--cd` argument at that racer's worktree, and have the architect diff both worktrees' results and pick the stronger one.
 
 The plugin ships the **orchestration skill** — the routing doctrine that teaches the session when to use each lane, the cost discipline that keeps expensive-model token volume minimal (emit judgment not volume, keep context lean, reason once then hand off), the five-part spec contract that makes context-free delegation safe, and the verification rules that keep every lane honest.
 
@@ -39,11 +41,11 @@ Then start your session as the architect:
 ## Requirements
 
 - **Claude Code ≥ 2.1.170** with a subscription that includes Fable 5 (Pro, Max, Team, or Enterprise — all current consumer plans qualify).
-- **No Fable access** (e.g. API-key billing)? Change `model: fable` → `model: opus` in the advisor and implementer files. Same pattern, the Fable roles shift down to Opus.
-- **Codex lane (the default implementer):** the `codex-implementer` agent needs the [OpenAI Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`, then `codex login`). It invokes **GPT-5.6 Luna** as `gpt-5.6-luna` with `model_reasoning_effort=max`. GPT-5.6 access may be limited during preview; without model access, an installed/authenticated CLI, or successful authentication, the agent reports `STATUS: unavailable` — it never silently falls back to a Claude model — and the Fable lanes remain unaffected.
+- **No Fable access** (e.g. API-key billing)? Change `model: fable` → `model: opus` in the two files that pin it — `agents/fable-advisor.md` and `agents/fable-implementer.md`; the codex lane's wrapper is `model: sonnet` and carries no Fable pin. Same pattern, the Fable roles shift down to Opus.
+- **Codex lane (the default implementer):** the `codex-implementer` agent needs the [OpenAI Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`, then `codex login`). It invokes **GPT-5.6 Luna** — the pinned slug and reasoning effort live in one normative place, [`agents/codex-implementer.md`](agents/codex-implementer.md), which also honors `FABLE_ADVISOR_CODEX_MODEL` and `FABLE_ADVISOR_CODEX_EFFORT` env overrides for repinning without editing files that `claude plugin update` overwrites. GPT-5.6 access may be limited during preview; without model access, an installed/authenticated CLI, or successful authentication, the agent reports `STATUS: unavailable` — it never silently falls back to a Claude model — and the Fable lanes remain unaffected. That no-fallback guarantee is about who writes the code: the lane's wrapper is itself a Sonnet agent spending Claude tokens on preflight, supervision, and independent re-verification. Perishable facts, as of codex-cli 0.146.1 (2026-08): `codex login status` exits non-zero when logged out, and Luna's reasoning tiers run low/medium/high/xhigh/max — there is no `ultra`.
 - Heads-up: if a pinned Claude model isn't available on your account, Claude Code silently falls back to your session model — the pattern degrades quietly rather than erroring. If results feel unremarkable, check your plan. (This quiet fallback applies only to Claude model pins — the codex lane always fails loudly with a structured error.)
 
-Model resolution order in Claude Code: `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` parameter → agent frontmatter → session model.
+Model resolution order in Claude Code: `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` parameter → agent frontmatter → session model. The consequence: a globally-set `CLAUDE_CODE_SUBAGENT_MODEL` outranks every frontmatter pin this plugin ships — unset it, or scope it per invocation, if you want the pins to hold.
 
 ## Use it
 
@@ -54,16 +56,18 @@ Add rate limiting to our public API. Design it, delegate the
 implementation, and verify the evidence before you call it done.
 ```
 
-The architect writes the spec, picks the lane (rate limiting touches concurrency — a good case for `fable-implementer`, or for racing it against `codex-implementer` and picking the stronger diff), reads the diff and verification evidence when the report comes back, sends the finished work to `fable-advisor` for the final review, and only then reports done.
+The architect writes the spec, picks the lane (rate limiting touches concurrency — a good case for `fable-implementer`), or races `codex-implementer` and `fable-implementer` on the same spec in separate git worktrees — each racer gets its own working root, the codex lane's `--cd` points at that racer's worktree, and the architect diffs both worktrees' results and picks the stronger one — then reads the diff and verification evidence when the report comes back, sends the finished work to `fable-advisor` for the final review, and only then reports done.
 
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
 ```
 You are the architect — minimize your own token volume. Delegate all
-implementation through the orchestration skill's routing table (never
-type code yourself), delegate broad codebase exploration to cheap
-read-only agents, verify evidence before accepting any lane's report,
-and get a fable-advisor review before reporting any deliverable done.
+implementation through the orchestration skill's routing table (typing
+implementation yourself only when the spec would be longer than the
+diff — and saying so in your report), delegate broad codebase
+exploration to cheap read-only agents, verify evidence before accepting
+any lane's report, and get a fable-advisor review before reporting any
+deliverable done.
 ```
 
 ## Commitment boundaries and the final review

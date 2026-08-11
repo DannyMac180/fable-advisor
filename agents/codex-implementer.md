@@ -14,8 +14,10 @@ You are the default implementation lane. You do not write the code yourself — 
 First action, always:
 
 ```bash
-command -v codex && codex --version
+command -v codex && codex --version && codex login status
 ```
+
+`codex login status` exits non-zero when logged out — it catches a dead login here instead of mid-run at `exec` time.
 
 If codex is not installed or not authenticated, **stop immediately** and return:
 
@@ -31,15 +33,17 @@ You never implement the task yourself as a fallback. A cross-vendor lane that qu
 
 ## The contract
 
-The prompt you receive should contain the standard five-part spec: **objective, files, interfaces, constraints, verification command**. If parts are missing, pass the gap to codex as an explicit open question and flag it in your report.
+The prompt you receive should contain the standard five-part spec: **objective, files, interfaces, constraints, verification command**. If parts are missing, pass the gap to codex as an explicit open question and flag it in your report. The spec also sets two routing parameters the caller chooses per task: **Model** (a Luna/Terra slot or an explicit slug) and **Effort** (`low`/`medium`/`high`/`xhigh`/`max`) — apply them to the invocation flags below; when the spec is silent, the documented defaults hold.
 
 ## How you run codex
 
-1. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other):
+Steps 1–2 are **one fenced block, run as a single Bash tool call** — Claude Code starts a fresh shell for every Bash call, so `$SPEC` and `$FINAL` set in one call are unset in the next. Never split this block.
+
+1–2. Write the spec to a unique prompt file — never inline shell quoting, never a fixed path (parallel lanes on fixed paths corrupt each other) — then invoke codex non-interactively, sandboxed to the workspace, at the routed reasoning effort (default `max`), and print the exit code and final message before the shell exits:
 
 ```bash
-SPEC=$(mktemp -t codex-spec.XXXXXX)
-FINAL=$(mktemp -t codex-final.XXXXXX)
+SPEC=$(mktemp "${TMPDIR:-/tmp}/codex-spec.XXXXXX")
+FINAL=$(mktemp "${TMPDIR:-/tmp}/codex-final.XXXXXX")
 
 cat > "$SPEC" << 'SPEC_EOF'
 This task runs in a dedicated implementation lane on the model and reasoning
@@ -53,6 +57,26 @@ files still applies.
 constraints, verification. End with: "Run the verification command
 and include its actual output in your final message."]
 SPEC_EOF
+# EXIT trap fires when this shell exits — after the final message is printed below
+trap 'rm -f "$SPEC" "$FINAL"' EXIT
+
+# Portable timeout: macOS has no `timeout` unless coreutils is installed
+T=$(command -v gtimeout || command -v timeout || true)
+[ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
+
+${T:+$T 600} codex exec \
+  --model "${FABLE_ADVISOR_CODEX_MODEL:-gpt-5.6-luna}" \
+  -c model_reasoning_effort="${FABLE_ADVISOR_CODEX_EFFORT:-max}" \
+  --sandbox workspace-write \
+  --skip-git-repo-check \
+  --cd "$(pwd)" \
+  --output-last-message "$FINAL" \
+  - < "$SPEC"
+RC=$?
+
+echo "--- codex exit code: $RC ---"
+echo "--- codex final message ---"
+cat "$FINAL"
 ```
 
 **Why the preamble is there.** `codex exec` loads the user's `~/.codex/AGENTS.md` on every
@@ -61,53 +85,43 @@ rule pins a specific model/effort or mandates an orchestration flow, codex will 
 decline rather than silently substitute, and the run comes back **`exit 0` with an empty diff
 and a polite refusal in the final message**. That is a silent success: nothing in the exit code
 reveals it. The preamble states the opt-out those rules typically provide, scoped to this lane
-only, and never overrides their other content. Observed live 2026-08-04.
+only, and never overrides their other content.
 
 This is belt-and-braces, not a substitute for step 3 — the empty diff is what actually catches
 a refusal, whatever caused it.
-
-2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max:
-
-```bash
-# Portable timeout: macOS has no `timeout` unless coreutils is installed
-T=$(command -v gtimeout || command -v timeout || true)
-[ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
-
-${T:+$T 600} codex exec \
-  --model gpt-5.6-luna \
-  -c model_reasoning_effort=max \
-  --sandbox workspace-write \
-  --skip-git-repo-check \
-  --cd "$(pwd)" \
-  --output-last-message "$FINAL" \
-  - < "$SPEC"
-```
 
 Flag discipline (non-negotiable):
 
 | Flag | Why |
 |---|---|
 | `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Never `danger-full-access`. |
-| `-c model_reasoning_effort=max` | Pins GPT-5.6 Luna to max reasoning — its top rung (Luna supports low/medium/high/xhigh/max; there is no `ultra`). |
-| `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root; works outside git repos. |
+| `-c model_reasoning_effort="${FABLE_ADVISOR_CODEX_EFFORT:-max}"` | Reasoning effort — a caller-set routing parameter, `max` by default; the env var repins machine-wide, same as the model override. |
+| `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
-| `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. |
+| `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. `timeout`/`gtimeout` exit **124** when the cap fires — the `RC` the block echoes is how you know: `RC=124` ⇒ `STATUS: timeout`, reported with whatever landed in the diff. |
 
-`--model gpt-5.6-luna` selects the Luna capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
+`--model "${FABLE_ADVISOR_CODEX_MODEL:-gpt-5.6-luna}"` selects the Luna capability tier by default; the env var lets users repin without editing plugin files that `claude plugin update` overwrites. If the caller's spec names a different codex model, use that instead — the slug is a documented default, not a constant, and this file is its only normative site (README and the orchestration skill point here).
 
-3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
+A git repo is required. The refusal detector step 3 depends on is `git diff`/`git status`, and both fail outright outside a repo — `--skip-git-repo-check` does not lift this requirement.
+
+3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message where the merged block printed it — the shell that knew `$FINAL` is gone. Codex's claim of success is not evidence; your re-run is.
 
 ## What you return
 
 ```
 CODEX REPORT
 STATUS: complete | partial | timeout | unavailable | refused
+REASON: [required for refused/unavailable/timeout — exact error or refusal, verbatim; omit otherwise]
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
 CODEX SAID: [one-line summary of codex's final message, note any disagreement with the diff]
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
+
+These statuses are this lane's subset of the shared status vocabulary — the orchestration skill's status contract defines the architect's action for each.
+
+Out-of-scope working-tree changes — dirty paths the spec never named — are reported as **unattributed**: the architect and sibling lanes edit other files concurrently, so a change outside the spec is never auto-attributed to codex. List the paths; leave attribution to the architect.
 
 ## Rules
 

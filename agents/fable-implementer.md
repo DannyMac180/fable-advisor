@@ -31,6 +31,8 @@ JUDGMENT CALLS: [decisions you made that the spec left open, or "none"]
 GAPS: [spec ambiguities, unfinished items, or "none"]
 ```
 
+`complete | partial | blocked` is this lane's subset of the shared status vocabulary — the orchestration skill's status contract defines the architect's action for each, including that `blocked` returns the decision to the architect.
+
 ## Rules
 
 - Never claim completion without running the verification yourself and quoting its output.
