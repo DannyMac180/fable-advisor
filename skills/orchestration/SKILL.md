@@ -31,7 +31,7 @@ Deciding rule: how much does the outcome depend on judgment the spec can't captu
 
 The codex lane is also the cross-vendor half of the pattern: its output comes from a non-Anthropic family, so the Claude architect's verification and the Fable review are genuine cross-vendor checks, not same-family self-review.
 
-If the codex lane returns `unavailable` or `timeout`, re-route the same spec to `fable-implementer` and say so explicitly in your report — never quietly absorb the substitution or the cost change.
+If the codex lane returns `unavailable`, `timeout`, or `execution-error`, re-route the same spec to `fable-implementer` and say so explicitly in your report — never quietly absorb the substitution or the cost change.
 
 ## The spec contract
 
