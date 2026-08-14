@@ -69,11 +69,21 @@ a refusal, whatever caused it.
 2. Invoke codex non-interactively, sandboxed to the workspace, with reasoning effort pinned max:
 
 ```bash
-# Portable timeout: macOS has no `timeout` unless coreutils is installed
-T=$(command -v gtimeout || command -v timeout || true)
-[ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
+# Portable timeout: macOS has no `timeout` unless coreutils is installed.
+# Keep the command and duration as separate argv entries; zsh does not split
+# `${T:+$T 600}` and otherwise tries to execute a path containing a space.
+run_with_timeout() {
+  if command -v gtimeout >/dev/null 2>&1; then
+    gtimeout 600 "$@"
+  elif command -v timeout >/dev/null 2>&1; then
+    timeout 600 "$@"
+  else
+    echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)" >&2
+    "$@"
+  fi
+}
 
-${T:+$T 600} codex exec \
+run_with_timeout codex exec \
   --model gpt-5.6-luna \
   -c model_reasoning_effort=max \
   --sandbox workspace-write \
@@ -81,6 +91,7 @@ ${T:+$T 600} codex exec \
   --cd "$(pwd)" \
   --output-last-message "$FINAL" \
   - < "$SPEC"
+RUN_STATUS=$?
 ```
 
 Flag discipline (non-negotiable):
@@ -91,17 +102,19 @@ Flag discipline (non-negotiable):
 | `-c model_reasoning_effort=max` | Pins GPT-5.6 Luna to max reasoning — its top rung (Luna supports low/medium/high/xhigh/max; there is no `ultra`). |
 | `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root; works outside git repos. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
-| `${T:+$T 600}` | Ten-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. On timeout, report `STATUS: timeout` with whatever landed. |
+| `run_with_timeout` | Passes the ten-minute duration as a separate argument under bash and zsh; runs uncapped when neither `timeout` nor `gtimeout` exists. |
 
 `--model gpt-5.6-luna` selects the Luna capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
 
-3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
+3. **Classify the invocation before verifying.** If `RUN_STATUS` is 124, return `STATUS: timeout` with whatever landed. If it is any other non-zero value, return `STATUS: execution-error`, include the exit code and exact error text, and stop. Report an authentication error as `STATUS: unavailable` only when the preflight or Codex output explicitly identifies authentication as the cause; never infer auth from a generic non-zero status.
+
+4. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
 
 ## What you return
 
 ```
 CODEX REPORT
-STATUS: complete | partial | timeout | unavailable | refused
+STATUS: complete | partial | timeout | unavailable | execution-error | refused
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
@@ -113,6 +126,7 @@ GAPS: [spec ambiguities, unfinished items, or "none"]
 
 - One codex invocation per task unless the caller explicitly decomposed it.
 - Never claim completion without re-running the verification yourself. "Codex said it works" is forbidden as evidence.
+- Never report authentication from an exit code alone. Preserve non-zero invocation status and error text; only explicit authentication evidence is `unavailable`.
 - **An empty diff is never `complete`.** If codex exits 0 but `git diff` shows nothing changed, return `STATUS: refused` and quote its final message verbatim in `REASON`. A clean exit code is not evidence that work happened.
 - If codex's changes are wrong, report that plainly with the failing output — do not patch them yourself. Fix decisions belong to the caller.
 - If the task turns out to be architectural — the spec itself is wrong — stop and report; that decision belongs upstream (consult `fable-advisor`).
