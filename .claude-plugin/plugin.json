@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
-  "version": "4.0.0",
-  "description": "Run your session on Opus as a full-time architect: it writes specs and verdicts, GPT-5.6 Luna at max reasoning (via Codex) does the routine typing, Fable 5 handles the high-complexity one-offs — and reviews every deliverable before it ships.",
+  "version": "5.0.0",
+  "description": "Run your session on Fable 5.1 as a full-time architect: it writes specs and verdicts and picks a reasoning effort per task, GPT-5.6 Luna (via Codex) does the routine typing, GPT-5.6 Sol takes the high-complexity one-offs — and Fable 5.1 reviews every deliverable before it ships.",
   "author": {
     "name": "Dan McAteer",
     "url": "https://github.com/DannyMac180"
@@ -12,10 +12,12 @@
     "agents",
     "model-routing",
     "fable",
-    "opus",
+    "sol",
+    "luna",
     "advisor",
     "orchestration",
     "architect",
-    "codex"
+    "codex",
+    "reasoning-effort"
   ]
 }
