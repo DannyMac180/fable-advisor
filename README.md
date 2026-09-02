@@ -2,6 +2,10 @@
 
 **Fable 5.1 runs the show. Codex does the typing at the effort each task deserves, and Fable reviews before anything ships.**
 
+<a href="https://github.com/DannyMac180/fable-advisor/raw/main/assets/fable-advisor-demo.mp4"><img src="assets/fable-advisor-demo-poster.png" alt="30-second demo: Fable 5.1 orchestrates, GPT-5.6 Luna implements, Fable 5.1 reviews" width="100%"></a>
+
+<p align="center"><em>▶ 30s demo — Fable 5.1 orchestrates → GPT-5.6 Luna implements → Fable 5.1 reviews</em></p>
+
 Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session runs on **Fable 5.1**, acting as a full-time architect. It owns requirements, decomposition, specs, and verification — routes every implementation task to the right lane at the right reasoning effort — and gets a clean-context **Fable 5.1** review of the finished work before calling anything done:
 
 | Lane | Producer | Invocation | Route here when |
