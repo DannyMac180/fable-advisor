@@ -71,15 +71,28 @@ a refusal, whatever caused it.
 2. Invoke codex non-interactively, sandboxed to the workspace, at the effort the spec named:
 
 ```bash
-# Portable timeout: macOS has no `timeout` unless coreutils is installed
-T=$(command -v gtimeout || command -v timeout || true)
+# Portable timeout: macOS has no `timeout` unless coreutils is installed.
+# Probe by RUNNING each candidate — a `command -v` hit is not proof it execs
+# (stale shell hash cache, dangling symlink from a relinked coreutils).
+T=""
+for c in gtimeout timeout; do
+  command -v "$c" >/dev/null 2>&1 && "$c" 1 true >/dev/null 2>&1 && { T="$c"; break; }
+done
 [ -z "$T" ] && echo "WARN: no timeout binary — codex runs uncapped (brew install coreutils to cap)"
 
 EFFORT="<value from the spec's REASONING line, or empty>"
 
-${T:+$T 1800} codex exec \
+# Build the timeout prefix as positional parameters. `${T:+$T 1800}` relies on bash
+# word-splitting an unquoted expansion; zsh does not split, so the prefix reaches
+# execve as ONE argv word and every run dies with "no such file or directory".
+# Claude Code's Bash tool runs zsh on macOS. `"$@"` expands to zero words when no
+# positional parameters are set — in bash and zsh alike — so the uncapped fallback
+# needs no special-casing.
+if [ -n "$T" ]; then set -- "$T" 1800; else set --; fi
+
+"$@" codex exec \
   --model gpt-5.6-sol \
-  ${EFFORT:+-c model_reasoning_effort=$EFFORT} \
+  ${EFFORT:+-c} ${EFFORT:+model_reasoning_effort=$EFFORT} \
   --sandbox workspace-write \
   --skip-git-repo-check \
   --cd "$(pwd)" \
@@ -92,10 +105,10 @@ Flag discipline (non-negotiable):
 | Flag | Why |
 |---|---|
 | `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Never `danger-full-access`. |
-| `-c model_reasoning_effort=$EFFORT` | Only when the spec named one. The architect chose it for this task; the lane passes it through unchanged. |
+| `${EFFORT:+-c} ${EFFORT:+model_reasoning_effort=$EFFORT}` | Only when the spec named one. Split across two expansions so each yields exactly one argv word or vanishes — `${EFFORT:+-c model_reasoning_effort=$EFFORT}` is a single word under zsh. The architect chose it for this task; the lane passes it through unchanged. |
 | `--skip-git-repo-check` + `--cd "$(pwd)"` | Deterministic working root; works outside git repos. |
 | `- < spec file` | Prompt via stdin. No quoting hazards, no truncated specs. |
-| `${T:+$T 1800}` | Thirty-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. High efforts on Sol are slow by design. On timeout, report `STATUS: timeout` with whatever landed. |
+| `"$@"` (timeout prefix, 1800s) | Thirty-minute wall clock when `timeout`/`gtimeout` exists (macOS needs `brew install coreutils`); runs uncapped otherwise. High efforts on Sol are slow by design. On timeout, report `STATUS: timeout` with whatever landed. |
 
 `--model gpt-5.6-sol` selects the Sol capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
 
