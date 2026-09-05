@@ -5,10 +5,12 @@
 # lane resolves, effort validates, codex authenticates, the model answers.
 # Deliberately tiny -- a few thousand tokens per lane, not a real task.
 #
-#   smoke.sh              test every configured lane (costs a few tokens)
-#   smoke.sh --dry-run    print the commands without calling codex (free)
-#   smoke.sh <lane>       test one lane only
-#   smoke.sh --effort max test at a specific rung instead of the lowest
+#   smoke.sh                 test the active lanes of every profile (a few tokens)
+#   smoke.sh --dry-run       print the commands without calling codex (free)
+#   smoke.sh --profile codex test only the lanes active in one profile
+#   smoke.sh <lane>          test one lane only, active or not
+#   smoke.sh --effort max    test at a specific rung instead of the lowest
+#   smoke.sh --all-lanes     include lanes that are active in no profile
 
 set -eu
 
@@ -16,14 +18,16 @@ script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 LANE_SH="$script_dir/lane.sh"
 [ -x "$LANE_SH" ] || { echo "smoke: cannot find lane.sh next to this script" >&2; exit 3; }
 
-DRY=0; EFFORT=""; ONLY=""
+DRY=0; EFFORT=""; ONLY=""; PROFILE=""; ALL=0
 while [ $# -gt 0 ]; do
   case "$1" in
-    --dry-run) DRY=1 ;;
-    --effort)  EFFORT="${2:-}"; shift ;;
-    -h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-    -*)        echo "smoke: unknown flag $1" >&2; exit 2 ;;
-    *)         ONLY="$1" ;;
+    --dry-run)   DRY=1 ;;
+    --effort)    EFFORT="${2:-}"; shift ;;
+    --profile)   PROFILE="${2:-}"; shift ;;
+    --all-lanes) ALL=1 ;;
+    -h|--help)   sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*)          echo "smoke: unknown flag $1" >&2; exit 2 ;;
+    *)           ONLY="$1" ;;
   esac
   shift
 done
@@ -32,8 +36,20 @@ command -v codex >/dev/null 2>&1 || { echo "smoke: codex not on PATH" >&2; exit 
 [ "$DRY" = "1" ] || codex login status >/dev/null 2>&1 || { echo "smoke: codex not authenticated (run: codex login)" >&2; exit 3; }
 
 CONFIG=$("$LANE_SH" config-path)
-LANES=$(jq -r '.lanes | keys_unsorted[]' "$CONFIG")
-[ -n "$ONLY" ] && LANES="$ONLY"
+
+# Default to the union of every profile's active lanes: testing a lane no profile
+# routes to spends tokens proving nothing. --all-lanes and an explicit lane opt out.
+if [ -n "$ONLY" ]; then
+  LANES="$ONLY"
+elif [ "$ALL" = "1" ]; then
+  LANES=$(jq -r '.lanes | keys_unsorted[]' "$CONFIG")
+elif [ -n "$PROFILE" ]; then
+  "$LANE_SH" profile "$PROFILE" >/dev/null   # fails loudly on an unknown profile
+  LANES=$(jq -r --arg p "$PROFILE" '.profiles[$p].lanes[]' "$CONFIG")
+else
+  LANES=$(jq -r '[.profiles[].lanes[]] | unique[]' "$CONFIG")
+fi
+[ -n "$LANES" ] || { echo "smoke: no lanes selected" >&2; exit 2; }
 
 rc=0
 for lane in $LANES; do

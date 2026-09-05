@@ -1,0 +1,23 @@
+{
+  "name": "arch-advisor",
+  "version": "6.1.0",
+  "interface": {
+    "displayName": "arch-advisor",
+    "shortDescription": "Architect-as-orchestrator routing for Codex",
+    "longDescription": "Turns a Codex session into a full-time architect: it owns requirements, decomposition, specs and verification, delegates every implementation task to a cheaper Codex lane at a reasoning effort validated against that lane, and reviews the accumulated diff with codex review before reporting done. Lane models, legal effort rungs and wall-clock caps are configuration in lanes.json, not hardcoded.",
+    "developerName": "Ruben Sousa",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://github.com/rubensousa-uw/arch-advisor",
+    "defaultPrompt": [
+      "Show me the profiles and lanes in effect with scripts/lane.sh list.",
+      "Act as the architect: design this, delegate the implementation to the routine lane, and verify with evidence before calling it done.",
+      "Review the accumulated diff before reporting done."
+    ]
+  },
+  "description": "Architect-as-orchestrator routing with configurable Codex implementation lanes and validated per-task reasoning effort.",
+  "author": {
+    "name": "Ruben Sousa",
+    "url": "https://github.com/rubensousa-uw"
+  }
+}

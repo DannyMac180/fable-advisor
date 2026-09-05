@@ -1,9 +1,35 @@
 {
-  "config_version": 1,
+  "config_version": 2,
 
-  "_comment": "Lane definitions for arch-advisor. Override by copying this file to .arch-advisor/lanes.json in a project, to ~/.claude/arch-advisor/lanes.json for all projects, or by pointing $ARCH_ADVISOR_CONFIG at it. Each lane maps 1:1 to a shipped agent file: you can change a lane's model, effort rungs and timeout here without touching an agent, but adding a genuinely new lane also needs a new agents/*.md file, because Claude Code discovers agents statically at startup.",
+  "_comment": "Profile and lane definitions for arch-advisor. Override by copying this file to .arch-advisor/lanes.json in a project, to ~/.claude/arch-advisor/lanes.json for all projects, or by pointing $ARCH_ADVISOR_CONFIG at it. A profile says who architects and who reviews; a lane says who implements. The profile is chosen by the host you run in, not by a setting: run in Claude Code and you get the claude profile, run in Codex and you get the codex profile, because neither host can run the other vendor's model as its own session.",
+
+  "_lanes_note": "Each lane maps 1:1 to a shipped agent file in the claude profile, because Claude Code discovers agents statically at startup: you can change a lane's model, effort rungs and timeout here without touching an agent, but a genuinely new lane also needs a new agents/*.md. The codex profile has no such constraint -- it invokes codex exec directly from the orchestration skill, so a lane there is pure config.",
 
   "_efforts_note": "Rungs below were verified empirically against the Codex CLI on 2026-09-05, not copied from docs. Both models reject 'minimal'. The API additionally accepts 'none' on gpt-5.6-luna (but not on gpt-6-astra); it is omitted here because an implementation lane should never run without reasoning. 'ultra' is not an API reasoning.effort value at all -- it is a Codex CLI construct that adds internal task delegation -- and it is accepted on both models, contrary to upstream's claim that it is Sol-only. It is verified working but DELIBERATELY NOT DECLARED here: it burns tokens fast enough that it should be an explicit, deliberate opt-in. Add the ultra string to a lane's efforts array to enable it; until then lane.sh refuses it like any other undeclared rung.",
+
+  "profiles": {
+    "claude": {
+      "host": "claude-code",
+      "architect": "fable",
+      "architect_fallback": "opus",
+      "advisor_kind": "claude-agent",
+      "advisor_model": "fable",
+      "advisor_fallback": "opus",
+      "lanes": ["routine"],
+      "describe": "Claude Fable 5.1 architects and reviews; Codex Luna implements. Cross-vendor: the model that reviews the code did not write it."
+    },
+
+    "codex": {
+      "host": "codex",
+      "architect": "gpt-6-astra",
+      "architect_fallback": null,
+      "advisor_kind": "codex-review",
+      "advisor_model": "gpt-6-astra",
+      "advisor_fallback": null,
+      "lanes": ["routine"],
+      "describe": "Codex GPT-6 Astra architects and reviews via the built-in codex review; Codex Luna implements. No Claude anywhere, and no driver layer -- the session shells out to codex exec itself. Single-vendor: Astra and Luna share a training lineage, so the review is a fresh-context check rather than an independent-model one."
+    }
+  },
 
   "lanes": {
     "routine": {
@@ -11,7 +37,7 @@
       "model": "gpt-5.6-luna",
       "efforts": ["low", "medium", "high", "xhigh", "max"],
       "timeout_seconds": 600,
-      "route_when": "The spec fully determines the outcome: mechanical edits, renames, wiring, boilerplate, tests that mirror an existing pattern, ordinary features with a design decision or two."
+      "route_when": "All implementation work in both shipped profiles. The spec fully determines the outcome: mechanical edits, renames, wiring, boilerplate, tests that mirror an existing pattern, ordinary features with a design decision or two."
     },
 
     "complex": {
@@ -19,7 +45,7 @@
       "model": "gpt-6-astra",
       "efforts": ["low", "medium", "high", "xhigh", "max"],
       "timeout_seconds": 1800,
-      "route_when": "Judgment the spec cannot capture decides the outcome: subtle concurrency, non-trivial algorithms, security-sensitive paths, gnarly debugging, wide-blast-radius refactors, or the routine lane already failed on a corrected spec. Also the second runner when racing two lanes on one spec."
+      "route_when": "Defined but NOT active in either shipped profile -- add the complex string to a profile's lanes array to enable it. Judgment the spec cannot capture decides the outcome: subtle concurrency, non-trivial algorithms, security-sensitive paths, gnarly debugging, wide-blast-radius refactors, or the routine lane already failed on a corrected spec."
     }
   }
 }

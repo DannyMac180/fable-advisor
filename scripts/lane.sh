@@ -1,17 +1,21 @@
 #!/bin/sh
-# arch-advisor — lane resolver.
+# arch-advisor — profile and lane resolver.
 #
-# Resolves a lane name to the codex model, effort rungs and timeout declared in
-# lanes.json, and validates a requested reasoning effort against that lane.
+# A profile says who architects and who reviews; a lane says who implements.
+# Both live in lanes.json. This script resolves them and validates a requested
+# reasoning effort against the lane that will run it.
 #
 # The codex CLI does NOT validate `model_reasoning_effort` client-side: it prints
 # whatever you give it and lets the API reject it later. This script is where the
 # "refuse rather than round" promise is actually kept.
 #
-#   lane.sh list                     human-readable table of configured lanes
-#   lane.sh resolve <lane>           shell-eval-able LANE_* assignments
-#   lane.sh validate <lane> <effort> exit 0 if the rung is declared for that lane
-#   lane.sh config-path              path of the lanes.json in effect
+#   lane.sh list                          profiles and lanes in effect
+#   lane.sh profiles                      names of configured profiles
+#   lane.sh profile <profile>             shell-eval-able PROFILE_* assignments
+#   lane.sh resolve <lane>                shell-eval-able LANE_* assignments
+#   lane.sh validate <lane> <effort>      exit 0 if the rung is declared for that lane
+#   lane.sh lane-active <profile> <lane>  exit 0 if the lane is active in that profile
+#   lane.sh config-path                   path of the lanes.json in effect
 
 set -eu
 
@@ -38,8 +42,15 @@ jq -e . "$CONFIG" >/dev/null 2>&1 || die "lanes.json is not valid JSON: $CONFIG"
 lane_exists() { jq -e --arg l "$1" '.lanes | has($l)' "$CONFIG" >/dev/null 2>&1; }
 lane_names()  { jq -r '.lanes | keys_unsorted | join(", ")' "$CONFIG"; }
 
+profile_exists() { jq -e --arg p "$1" '.profiles | has($p)' "$CONFIG" >/dev/null 2>&1; }
+profile_names()  { jq -r '.profiles | keys_unsorted | join(", ")' "$CONFIG"; }
+
 require_lane() {
   lane_exists "$1" || die "unknown lane '$1' in $CONFIG (configured: $(lane_names))" 2
+}
+
+require_profile() {
+  profile_exists "$1" || die "unknown profile '$1' in $CONFIG (configured: $(profile_names))" 2
 }
 
 cmd=${1:-}
@@ -50,15 +61,42 @@ case "$cmd" in
 
   list)
     printf 'lanes.json: %s\n\n' "$CONFIG"
-    jq -r '.lanes | to_entries[] |
-      "  \(.key)\n    agent:   \(.value.agent)\n    model:   \(.value.model)\n    efforts: \(if .value.efforts == null then "(not declared — the flag is omitted and codex uses your ~/.codex/config.toml default)" else (.value.efforts | join(", ")) end)\n    timeout: \(.value.timeout_seconds)s\n"' "$CONFIG"
+    printf 'PROFILES\n\n'
+    jq -r '.profiles | to_entries[] |
+      "  \(.key)  [host: \(.value.host)]\n    architect: \(.value.architect)\(if .value.architect_fallback == null then "" else " (fallback: " + .value.architect_fallback + ")" end)\n    advisor:   \(.value.advisor_model) via \(.value.advisor_kind)\n    lanes:     \(.value.lanes | join(", "))\n    \(.value.describe)\n"' "$CONFIG"
+    printf 'LANES\n\n'
+    jq -r '. as $root | .lanes | to_entries[] |
+      . as $lane |
+      ($root.profiles | to_entries | map(select(.value.lanes | index($lane.key))) | map(.key)) as $active |
+      "  \(.key)\(if ($active | length) == 0 then "  [INACTIVE — in no profile]" else "  [active in: " + ($active | join(", ")) + "]" end)\n    agent:   \(.value.agent)\n    model:   \(.value.model)\n    efforts: \(if .value.efforts == null then "(not declared — the flag is omitted and codex uses your ~/.codex/config.toml default)" else (.value.efforts | join(", ")) end)\n    timeout: \(.value.timeout_seconds)s\n"' "$CONFIG"
+    ;;
+
+  profiles)
+    jq -r '.profiles | keys_unsorted[]' "$CONFIG"
+    ;;
+
+  profile)
+    profile=${2:-}; [ -n "$profile" ] || die "usage: lane.sh profile <profile>" 2
+    require_profile "$profile"
+    # Values are single-quoted: PROFILE_LANES is a space-separated list, and an
+    # unquoted eval of it would run the second lane name as a command.
+    jq -r --arg p "$profile" '
+      def q: "\u0027" + (tostring | gsub("\u0027"; "\u0027\\\\\u0027\u0027")) + "\u0027";
+      .profiles[$p] |
+      "PROFILE_NAME=" + ($p | q),
+      "PROFILE_HOST=" + (.host | q),
+      "PROFILE_ARCHITECT=" + (.architect | q),
+      "PROFILE_ARCHITECT_FALLBACK=" + ((if .architect_fallback == null then "" else .architect_fallback end) | q),
+      "PROFILE_ADVISOR_KIND=" + (.advisor_kind | q),
+      "PROFILE_ADVISOR_MODEL=" + (.advisor_model | q),
+      "PROFILE_ADVISOR_FALLBACK=" + ((if .advisor_fallback == null then "" else .advisor_fallback end) | q),
+      "PROFILE_LANES=" + ((.lanes | join(" ")) | q)' "$CONFIG"
     ;;
 
   resolve)
     lane=${2:-}; [ -n "$lane" ] || die "usage: lane.sh resolve <lane>" 2
     require_lane "$lane"
-    # Values are single-quoted: LANE_EFFORTS is a space-separated list, and an
-    # unquoted eval of it would run "medium high xhigh max" as a command.
+    # Same reason: LANE_EFFORTS is a space-separated list.
     jq -r --arg l "$lane" '
       def q: "\u0027" + (tostring | gsub("\u0027"; "\u0027\\\\\u0027\u0027")) + "\u0027";
       .lanes[$l] |
@@ -84,11 +122,23 @@ case "$cmd" in
     die "effort '$effort' is not supported by $model (lane '$lane'). Declared rungs: $valid. Refusing rather than rounding." 4
     ;;
 
+  lane-active)
+    profile=${2:-}; lane=${3:-}
+    [ -n "$profile" ] && [ -n "$lane" ] || die "usage: lane.sh lane-active <profile> <lane>" 2
+    require_profile "$profile"
+    require_lane "$lane"
+    if jq -e --arg p "$profile" --arg l "$lane" '.profiles[$p].lanes | index($l)' "$CONFIG" >/dev/null 2>&1; then
+      exit 0
+    fi
+    active=$(jq -r --arg p "$profile" '.profiles[$p].lanes | join(", ")' "$CONFIG")
+    die "lane '$lane' is not active in profile '$profile' (active: $active). Add it to that profile's lanes array to enable it." 5
+    ;;
+
   ""|-h|--help|help)
-    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
     ;;
 
   *)
-    die "unknown command '$cmd' (try: list, resolve, validate, config-path)" 2
+    die "unknown command '$cmd' (try: list, profiles, profile, resolve, validate, lane-active, config-path)" 2
     ;;
 esac

@@ -1,0 +1,20 @@
+{
+  "name": "arch-advisor",
+  "interface": {
+    "displayName": "arch-advisor"
+  },
+  "plugins": [
+    {
+      "name": "arch-advisor",
+      "source": {
+        "source": "local",
+        "path": "./plugins/arch-advisor"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "NONE"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

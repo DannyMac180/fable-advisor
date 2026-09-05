@@ -9,6 +9,9 @@ The session is the architect: it owns requirements, architecture, decomposition,
 
 **Lane models are configuration.** No model slug is hardcoded in an agent. Each lane's codex model, its legal effort rungs and its wall-clock cap live in `lanes.json`, resolved at runtime by `scripts/lane.sh`. Run `lane.sh list` to see what is actually configured before you route — the tables below describe the shipped defaults, and the config is the source of truth.
 
+**This is the `claude` profile: Claude Fable 5.1 architects and reviews, Codex Luna implements.** It is the cross-vendor pairing — the model that reviews the code did not write it. The repo ships a second profile, `codex`, where a Codex Astra session architects and reviews and no Claude is involved; it lives under `codex/` and is installed into the Codex CLI, not here. Run `scripts/lane.sh profile claude` for the models this profile declares, and `scripts/lane.sh list` for both.
+
+
 ## Cost discipline — the prime directive
 
 The economics of this pattern: the Claude architect orchestrates (judgment-heavy, volume-light), the routine lane does the typing (volume-heavy, cheap, cross-vendor), the complex lane takes the hard one-offs (cross-vendor, expensive, only when judgment decides the outcome), and the advisor reviews in a clean context before anything ships. Three rules follow.
@@ -26,10 +29,10 @@ What stays with the architect regardless of cost: decomposition, interface desig
 | Lane | Ships as | Invoke | Route here when |
 |---|---|---|---|
 | `routine` | GPT-5.6 Luna (effort per task) | `implementer-routine` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the codex CLI. |
-| `complex` | GPT-6 Astra (effort per task, up to `max`) | `implementer-complex` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task once. Also the second runner when racing two lanes on one spec. One-off escalations, never the default. Requires the codex CLI. |
-| — | strongest available Claude | `arch-advisor` agent | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
+| `complex` | GPT-6 Astra (effort per task, up to `max`) | `implementer-complex` agent | **Defined but NOT active in the shipped profile** — `lane.sh lane-active claude complex` exits 5 until you add `complex` to the profile's `lanes` array. Enable it deliberately for work where judgment the spec can't capture decides the outcome: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors, or a routine-lane task that already failed once. Requires the codex CLI. |
+| — | Claude Fable 5.1 (`opus` fallback) | `arch-advisor` agent | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
 
-To point a lane at a different model, edit `lanes.json` — never edit an agent file, and never pass a model slug the config doesn't name.
+To point a lane at a different model, edit `lanes.json` — never edit an agent file, and never pass a model slug the config doesn't name. Before routing to any lane other than `routine`, check `scripts/lane.sh lane-active claude <lane>`; an inactive lane is a deliberate cost decision, not an oversight to route around.
 
 Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default routine lane; you will verify anyway. A lot, and mistakes are costly → escalate to `implementer-complex`, or keep that piece with the architect. A routine-lane task that fails its spec once gets a corrected spec; twice, it escalates — repetition is evidence the task was misclassified.
 

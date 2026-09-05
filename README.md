@@ -1,14 +1,23 @@
 # arch-advisor
 
-**Your Claude session runs the show as an architect. Codex does the typing, on whichever model you configure, at the effort each task deserves. A clean-context advisor reviews before anything ships.**
+**Two ways to run the architect pattern: a Claude architect over Codex lanes, or an all-Codex one. Pick a profile, and the models are configuration from there on.**
 
-Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session acts as a full-time architect. It owns requirements, decomposition, specs, and verification — routes every implementation task to the right lane at the right reasoning effort — and gets a clean-context review of the finished work before calling anything done.
+The architect pattern puts one model in charge full-time: it owns requirements, decomposition, specs and verification, routes every implementation task to the cheapest lane at the lowest adequate reasoning effort, and gets the finished work reviewed before calling anything done. This repo ships that pattern for two hosts.
 
-| Lane | Ships as | Invocation | Route here when |
-|---|---|---|---|
-| `routine` | GPT-5.6 Luna | `implementer-routine` (default) | The spec fully determines the outcome — Codex does the typing via the [Codex CLI](https://github.com/openai/codex) |
-| `complex` | GPT-6 Astra | `implementer-complex` | Judgment the spec can't capture decides the outcome: subtle concurrency, hard debugging, security-sensitive paths, wide refactors — and the second runner when you race two lanes on one spec |
-| review | strongest Claude you have | `arch-advisor` | Commitment boundaries, and always once at the end of a deliverable |
+| Profile | Host | Architect + reviewer | Implements | Independence |
+|---|---|---|---|---|
+| `claude` | Claude Code | Claude Fable 5.1 (`opus` fallback) | GPT-5.6 Luna | **Cross-vendor** — the reviewer did not write the code |
+| `codex` | Codex CLI | GPT-6 Astra, review via built-in `codex review` | GPT-5.6 Luna | Single-vendor — fresh context, shared blind spots |
+
+The profile is chosen by the host you install into, not by a setting: neither host can run the other vendor's model as its own session.
+
+```bash
+scripts/lane.sh list          # the profiles and lanes actually in effect
+```
+
+**The `codex` profile has no driver layer.** In Claude Code, reaching a shell means spawning a subagent, and a subagent must be a Claude model — so a small Claude sits between the architect and `codex exec`, writing no code but costing tokens. A Codex session already has a shell and invokes `codex exec` itself. One less model in the loop.
+
+**What you give up in the `codex` profile** is the reason the pattern works in the first place: Astra reviewing Luna is not an independent check the way Fable reviewing Luna is. Same vendor, same training lineage, overlapping blind spots. It is a fresh-context review, and the config says so in as many words.
 
 ## What this fork changes
 
@@ -24,18 +33,32 @@ The plugin is also no longer named after one specific Claude model, because the 
 
 ## Install
 
+Both profiles need `jq` and the [OpenAI Codex CLI](https://github.com/openai/codex), because both run their implementation lane through it:
+
+```bash
+brew install jq coreutils          # coreutils supplies gtimeout; without it, lane runs are uncapped
+npm i -g @openai/codex
+codex login
+```
+
+**Profile `claude`** — into Claude Code:
+
 ```bash
 claude plugin marketplace add rubensousa-uw/arch-advisor
 claude plugin install arch-advisor@arch-advisor
 ```
 
-Requires `jq` (`brew install jq`) for lane resolution, and the [OpenAI Codex CLI](https://github.com/openai/codex) installed and authenticated (`npm i -g @openai/codex`, then `codex login`) for the implementation lanes.
+Then `/model` to pick the architect. The `arch-advisor` agent ships as `model: fable`; drop it to `opus` in `agents/arch-advisor.md` if your plan does not include Fable 5.1.
 
-Then set your session model — anything capable will do; the doctrine doesn't care which:
+**Profile `codex`** — into the Codex CLI, from the `codex/` subtree of this repo:
 
+```bash
+git clone https://github.com/rubensousa-uw/arch-advisor.git
+codex plugin marketplace add ./arch-advisor/codex
+codex plugin add arch-advisor@arch-advisor
 ```
-/model
-```
+
+The Codex plugin symlinks `config/` and `scripts/` from the repo root, so both profiles resolve the same `lanes.json` and the same validator — there is one source of truth for the lanes, not two copies to drift apart.
 
 ## Configuring the lanes
 
@@ -80,7 +103,9 @@ The shipped rungs were probed against the live CLI on 2026-09-05 rather than cop
 
 **`ultra` ships disabled**, even though it is verified working, because it burns tokens fast enough to deserve a deliberate opt-in rather than a default. `lane.sh` refuses it like any undeclared rung; add `"ultra"` to a lane's `efforts` array when you actually want it. `none` is real on Luna but likewise omitted: an implementation lane should not run without reasoning.
 
-**One honest limitation:** a lane maps 1:1 to an agent file, because Claude Code discovers agents statically at startup. You can re-point the two shipped lanes at any models you like without touching an agent — but a genuinely *third* lane also needs a new `agents/*.md`, copied from an existing one.
+**One honest limitation, and only in the `claude` profile:** there, a lane maps 1:1 to an agent file, because Claude Code discovers agents statically at startup. You can re-point the shipped lanes at any models you like without touching an agent — but a genuinely *third* lane also needs a new `agents/*.md`, copied from an existing one. The `codex` profile has no such constraint: it invokes `codex exec` straight from the orchestration skill, so a lane there is pure config.
+
+**`complex` ships defined but inactive.** Neither profile lists it in its `lanes` array, so `lane.sh lane-active <profile> complex` exits 5 and `smoke.sh` skips it. Add `"complex"` to a profile's `lanes` to turn it on. In the `codex` profile note what you are buying: the lane's model is the same Astra that architects, so it gives you an isolated context and a write sandbox, not a second opinion.
 
 ## Testing it
 
@@ -130,7 +155,13 @@ review before reporting any deliverable done.
 
 ## Commitment boundaries and final review
 
-Even the architect gets a second opinion. The `arch-advisor` agent is a read-only skeptic on the same model as the architect but in a clean context — consulted before architecture decisions, migrations and API designs, whenever a problem has resisted two attempts, and **always once at the end of a deliverable**, where it reads the accumulated diff with fresh eyes, against the stated goal rather than the conversation, and returns ship / fix-first / rethink. It never implements.
+Even the architect gets a second opinion, in both profiles, and always once at the end of a deliverable — the reviewer reads the accumulated diff with fresh eyes, against the stated goal rather than the conversation, and returns ship / fix-first / rethink. It never implements. It is also consulted before architecture decisions, migrations and API designs, and whenever a problem has resisted two distinct attempts.
+
+The mechanism differs by profile. In `claude` it is the read-only `arch-advisor` agent on Fable 5.1 — the same model as the architect, so a fresh-eyes check rather than an independent-model one, but reviewing code a different vendor wrote. In `codex` it is the CLI's built-in reviewer, which needs no agent file at all:
+
+```bash
+codex review --uncommitted -c model=gpt-6-astra
+```
 
 It is a fresh-eyes check, not an independent-model check — the cross-vendor independence comes from the Codex lanes producing the code. For an independent-model review on top, the official [Codex plugin](https://github.com/openai/codex-plugin-cc)'s `/codex:adversarial-review` slots in just before it.
 
