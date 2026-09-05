@@ -1,0 +1,31 @@
+{
+  "config_version": 1,
+
+  "_comment": "Lane definitions for arch-advisor. Override by copying this file to .arch-advisor/lanes.json in a project, to ~/.claude/arch-advisor/lanes.json for all projects, or by pointing $ARCH_ADVISOR_CONFIG at it. Each lane maps 1:1 to a shipped agent file: you can change a lane's model, effort rungs and timeout here without touching any agent, but adding a genuinely new lane also needs a new agents/*.md file, because Claude Code discovers agents statically at startup.",
+
+  "lanes": {
+    "routine": {
+      "agent": "implementer-routine",
+      "model": "gpt-5.6-luna",
+      "efforts": ["low", "medium", "high", "xhigh", "max"],
+      "timeout_seconds": 600,
+      "route_when": "The spec fully determines the outcome: mechanical edits, renames, wiring, boilerplate, tests that mirror an existing pattern, ordinary features with a design decision or two."
+    },
+
+    "complex": {
+      "agent": "implementer-complex",
+      "model": "gpt-5.6-sol",
+      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"],
+      "timeout_seconds": 1800,
+      "route_when": "Judgment the spec cannot capture decides the outcome: subtle concurrency, non-trivial algorithms, security-sensitive paths, gnarly debugging, wide-blast-radius refactors, or the routine lane already failed on a corrected spec."
+    },
+
+    "alt": {
+      "agent": "implementer-alt",
+      "model": "gpt-6-astra",
+      "efforts": null,
+      "timeout_seconds": 1800,
+      "route_when": "Third opinion, or the newest model. Race it against the routine lane on high-stakes work and let the architect pick the stronger diff."
+    }
+  }
+}

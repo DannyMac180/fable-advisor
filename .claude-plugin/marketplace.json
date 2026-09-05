@@ -1,17 +1,17 @@
 {
-  "name": "fable-advisor",
+  "name": "arch-advisor",
   "metadata": {
-    "description": "Model-routing patterns for Claude Code: Fable 5.1 architect-as-orchestrator with a GPT-5.6 Luna routine lane, a GPT-5.6 Sol high-complexity lane, per-task reasoning effort, and a Fable 5.1 end-of-deliverable reviewer."
+    "description": "Model-routing patterns for Claude Code: architect-as-orchestrator with configurable Codex implementation lanes, per-task reasoning effort validated against each lane, and a mandatory clean-context reviewer before anything ships."
   },
   "owner": {
-    "name": "Dan McAteer",
-    "url": "https://github.com/DannyMac180"
+    "name": "Ruben Sousa",
+    "url": "https://github.com/rubensousa-uw"
   },
   "plugins": [
     {
-      "name": "fable-advisor",
+      "name": "arch-advisor",
       "source": "./",
-      "description": "Fable 5.1 architect-as-orchestrator: your session writes specs and verdicts, routing routine implementation to GPT-5.6 Luna and high-complexity one-offs to GPT-5.6 Sol (both via Codex CLI, effort chosen per task) — with a mandatory Fable 5.1 review before anything ships."
+      "description": "Architect-as-orchestrator: your Claude session writes specs and verdicts, routing routine implementation to one Codex lane and high-complexity one-offs to another (models and effort rungs configured in lanes.json, effort chosen per task) — with a mandatory clean-context review before anything ships."
     }
   ]
 }
