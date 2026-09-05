@@ -18,8 +18,17 @@ This lane exists to be swapped. It ships pointing at the newest model available 
 First action, always:
 
 ```bash
-LANE_SH="${CLAUDE_PLUGIN_ROOT:-$HOME/.claude/plugins/marketplaces/arch-advisor}/scripts/lane.sh"
-[ -x "$LANE_SH" ] || LANE_SH="$HOME/.claude/plugins/marketplaces/arch-advisor/scripts/lane.sh"
+# Locate lane.sh. CLAUDE_PLUGIN_ROOT covers the normal case; the rest cover a
+# marketplace installed from a local directory, where no ~/.claude/plugins
+# copy exists.
+LANE_SH=""
+for c in "${ARCH_ADVISOR_HOME:-/nonexistent}/scripts/lane.sh" \
+         "${CLAUDE_PLUGIN_ROOT:-/nonexistent}/scripts/lane.sh" \
+         "$HOME/.claude/plugins/marketplaces/arch-advisor/scripts/lane.sh" \
+         "$(jq -r '.extraKnownMarketplaces["arch-advisor"].source.path // "/nonexistent"' "$HOME/.claude/settings.json" 2>/dev/null)/scripts/lane.sh"; do
+  [ -x "$c" ] && { LANE_SH="$c"; break; }
+done
+[ -n "$LANE_SH" ] || echo "arch-advisor: cannot locate lane.sh — set ARCH_ADVISOR_HOME to the plugin checkout"
 
 eval "$("$LANE_SH" resolve alt)"   # sets LANE_MODEL, LANE_TIMEOUT, LANE_EFFORTS, LANE_EFFORTS_DECLARED
 command -v codex && codex --version

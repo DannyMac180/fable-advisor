@@ -57,12 +57,16 @@ case "$cmd" in
   resolve)
     lane=${2:-}; [ -n "$lane" ] || die "usage: lane.sh resolve <lane>" 2
     require_lane "$lane"
-    jq -r --arg l "$lane" '.lanes[$l] |
-      "LANE_NAME=\($l)",
-      "LANE_MODEL=\(.model)",
-      "LANE_TIMEOUT=\(.timeout_seconds)",
-      "LANE_EFFORTS=\(if .efforts == null then "" else (.efforts | join(" ")) end)",
-      "LANE_EFFORTS_DECLARED=\(if .efforts == null then 0 else 1 end)"' "$CONFIG"
+    # Values are single-quoted: LANE_EFFORTS is a space-separated list, and an
+    # unquoted eval of it would run "medium high xhigh max" as a command.
+    jq -r --arg l "$lane" '
+      def q: "\u0027" + (tostring | gsub("\u0027"; "\u0027\\\\\u0027\u0027")) + "\u0027";
+      .lanes[$l] |
+      "LANE_NAME=" + ($l | q),
+      "LANE_MODEL=" + (.model | q),
+      "LANE_TIMEOUT=" + (.timeout_seconds | q),
+      "LANE_EFFORTS=" + ((if .efforts == null then "" else (.efforts | join(" ")) end) | q),
+      "LANE_EFFORTS_DECLARED=" + ((if .efforts == null then 0 else 1 end) | q)' "$CONFIG"
     ;;
 
   validate)
