@@ -1,6 +1,6 @@
 ---
 name: orchestration
-description: Routing doctrine for the architect-as-orchestrator pattern — how a Claude session delegates routine implementation to the routine codex lane, escalates high-complexity one-offs to the complex lane, picks a reasoning effort per task, and gets every deliverable reviewed by the advisor before reporting done. Lane models and effort rungs are configuration, not hardcoded. USE WHEN delegating implementation work, choosing between the implementer-routine/implementer-complex/implementer-alt lanes, choosing a reasoning effort for a lane, writing a spec for a subagent, deciding whether to consult arch-advisor, using the Codex plugin's review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.
+description: Routing doctrine for the architect-as-orchestrator pattern — how a Claude session delegates routine implementation to the routine codex lane, escalates high-complexity one-offs to the complex lane, picks a reasoning effort per task, and gets every deliverable reviewed by the advisor before reporting done. Lane models and effort rungs are configuration, not hardcoded. USE WHEN delegating implementation work, choosing between the implementer-routine and implementer-complex lanes, choosing a reasoning effort for a lane, writing a spec for a subagent, deciding whether to consult arch-advisor, using the Codex plugin's review skills, managing session cost or token spend, or running any multi-task build where the session is the architect.
 ---
 
 # Orchestration — the architect's routing doctrine
@@ -26,8 +26,7 @@ What stays with the architect regardless of cost: decomposition, interface desig
 | Lane | Ships as | Invoke | Route here when |
 |---|---|---|---|
 | `routine` | GPT-5.6 Luna (effort per task) | `implementer-routine` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the codex CLI. |
-| `complex` | GPT-5.6 Sol (effort per task, up to `ultra`) | `implementer-complex` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task once. One-off escalations, never the default. Requires the codex CLI. |
-| `alt` | GPT-6 Astra (effort rungs undeclared) | `implementer-alt` agent | A third opinion, a newer model, or the second runner when you race two lanes on one spec. Its rungs ship undeclared, so it omits the effort flag and runs at the user's codex default until they are confirmed. Requires the codex CLI. |
+| `complex` | GPT-6 Astra (effort per task, up to `max`) | `implementer-complex` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task once. Also the second runner when racing two lanes on one spec. One-off escalations, never the default. Requires the codex CLI. |
 | — | strongest available Claude | `arch-advisor` agent | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
 
 To point a lane at a different model, edit `lanes.json` — never edit an agent file, and never pass a model slug the config doesn't name.
@@ -48,9 +47,9 @@ Nothing in the lanes pins an effort — the architect names one per task in the 
 | `high` | Ordinary features with a couple of design decisions left to the lane; most routine work with real logic in it |
 | `xhigh` | Tricky logic, multi-file changes with interactions, the second attempt after a spec correction |
 | `max` | The hardest single-lane tasks: concurrency, security-sensitive paths, gnarly debugging |
-| `ultra` | Maximum reasoning plus codex's own internal task delegation — slow; reserve for wide-blast-radius refactors and problems that have resisted two attempts |
+| `ultra` | Maximum reasoning plus codex's own internal task delegation — slow and token-hungry. **Disabled in the shipped config**; it has to be added to a lane's `efforts` before you can route to it. |
 
-**Which rungs a given lane actually accepts is configuration, not doctrine.** `lane.sh list` prints the declared rungs per lane; as shipped, the routine lane (Luna) has no `ultra` and the alt lane (Astra) has none declared at all. A lane refuses an undeclared rung rather than rounding it — the codex CLI itself does *not* validate effort names client-side, so this check is the only thing standing between a typo and a mid-run API rejection. A task that seems to need a rung the default lane lacks is a task for a lane that has it.
+**Which rungs a given lane actually accepts is configuration, not doctrine.** `lane.sh list` prints the declared rungs per lane; as shipped, both lanes accept `low` through `max`; `ultra` is deliberately left out to stop it becoming a habit, and both models reject `minimal`. A lane refuses an undeclared rung rather than rounding it — the codex CLI itself does *not* validate effort names client-side, so this check is the only thing standing between a typo and a mid-run API rejection. A task that seems to need a rung the default lane lacks is a task for a lane that has it.
 
 If you omit the effort, the lane runs codex at the user's own `~/.codex/config.toml` default and flags that in `GAPS` — acceptable for trivial work, never for an escalation.
 
@@ -71,7 +70,7 @@ A spec you can't finish writing is a signal the decision isn't made yet — that
 
 ## Parallelism
 
-Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, run two lanes on the same spec — `implementer-routine` against `implementer-complex` for two capability tiers, or either against `implementer-alt` for two model generations — and let the architect pick the stronger diff. Tell neither lane about the other: independence is the whole point.
+Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, run both lanes on the same spec — `implementer-routine` against `implementer-complex`, two vendors' generations of the same idea — and let the architect pick the stronger diff. Tell neither lane about the other: independence is the whole point.
 
 ## Commitment boundaries and the final review
 

@@ -7,8 +7,7 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 | Lane | Ships as | Invocation | Route here when |
 |---|---|---|---|
 | `routine` | GPT-5.6 Luna | `implementer-routine` (default) | The spec fully determines the outcome — Codex does the typing via the [Codex CLI](https://github.com/openai/codex) |
-| `complex` | GPT-5.6 Sol | `implementer-complex` | Judgment the spec can't capture decides the outcome: subtle concurrency, hard debugging, security-sensitive paths, wide refactors |
-| `alt` | GPT-6 Astra | `implementer-alt` | A third opinion, a newer model, or the second runner when you race two lanes on one spec |
+| `complex` | GPT-6 Astra | `implementer-complex` | Judgment the spec can't capture decides the outcome: subtle concurrency, hard debugging, security-sensitive paths, wide refactors — and the second runner when you race two lanes on one spec |
 | review | strongest Claude you have | `arch-advisor` | Commitment boundaries, and always once at the end of a deliverable |
 
 ## What this fork changes
@@ -19,7 +18,7 @@ This is a fork of [DannyMac180/fable-advisor](https://github.com/DannyMac180/fab
 
 The plugin is also no longer named after one specific Claude model, because the architect model is your choice (`/model`), not the plugin's.
 
-**A third lane, `alt`,** ships pointing at `gpt-6-astra` — the newest model the Codex CLI knows about — as the slot you re-point when something newer lands.
+**No Sol lane.** Upstream escalates to `gpt-5.6-sol`; this fork escalates to `gpt-6-astra` instead. Re-point it in `lanes.json` if you disagree — that is the whole point of the config.
 
 **Effort validation now actually happens.** The `codex` CLI does *not* validate `model_reasoning_effort` client-side: hand it a garbage rung and it prints `reasoning effort: garbage` and lets the API reject the run minutes later. Upstream's "refuse rather than round" promise rests entirely on a list written in prose inside a markdown file. Here `lane.sh validate` checks the requested rung against the lane's declared rungs and fails closed, before a token is spent.
 
@@ -66,9 +65,22 @@ Each lane declares four things:
 }
 ```
 
-`efforts: null` means *undeclared* — the lane then omits the effort flag entirely and lets codex fall back to your `~/.codex/config.toml` default, flagging it in the report. That is how the `alt` lane ships, because the rungs GPT-6 Astra accepts have not been verified. Declare them once you know them and validation starts working.
+`efforts: null` means *undeclared* — the lane then omits the effort flag entirely and lets codex fall back to your `~/.codex/config.toml` default, flagging it in the report. Use it when you add a model whose rungs you have not confirmed.
 
-**One honest limitation:** a lane maps 1:1 to an agent file, because Claude Code discovers agents statically at startup. You can re-point the three shipped lanes at any models you like without touching an agent — but a genuinely *fourth* lane also needs a new `agents/*.md`, copied from an existing one.
+### Effort rungs, measured
+
+The shipped rungs were probed against the live CLI on 2026-09-05 rather than copied from documentation, which turned out to matter — upstream's lists are wrong in two places:
+
+| | `minimal` | `none` | `low`–`max` | `ultra` |
+|---|---|---|---|---|
+| `gpt-5.6-luna` | rejected | accepted by the API | accepted | **accepted** (upstream says Sol-only) |
+| `gpt-6-astra` | rejected | rejected | accepted | accepted |
+
+`ultra` is not an API `reasoning.effort` value at all — the API's own error message lists only `low, medium, high, xhigh, max`. It is a Codex CLI construct that adds internal task delegation, and it passes on both models.
+
+**`ultra` ships disabled**, even though it is verified working, because it burns tokens fast enough to deserve a deliberate opt-in rather than a default. `lane.sh` refuses it like any undeclared rung; add `"ultra"` to a lane's `efforts` array when you actually want it. `none` is real on Luna but likewise omitted: an implementation lane should not run without reasoning.
+
+**One honest limitation:** a lane maps 1:1 to an agent file, because Claude Code discovers agents statically at startup. You can re-point the two shipped lanes at any models you like without touching an agent — but a genuinely *third* lane also needs a new `agents/*.md`, copied from an existing one.
 
 ## Use it
 

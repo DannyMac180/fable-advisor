@@ -1,7 +1,9 @@
 {
   "config_version": 1,
 
-  "_comment": "Lane definitions for arch-advisor. Override by copying this file to .arch-advisor/lanes.json in a project, to ~/.claude/arch-advisor/lanes.json for all projects, or by pointing $ARCH_ADVISOR_CONFIG at it. Each lane maps 1:1 to a shipped agent file: you can change a lane's model, effort rungs and timeout here without touching any agent, but adding a genuinely new lane also needs a new agents/*.md file, because Claude Code discovers agents statically at startup.",
+  "_comment": "Lane definitions for arch-advisor. Override by copying this file to .arch-advisor/lanes.json in a project, to ~/.claude/arch-advisor/lanes.json for all projects, or by pointing $ARCH_ADVISOR_CONFIG at it. Each lane maps 1:1 to a shipped agent file: you can change a lane's model, effort rungs and timeout here without touching an agent, but adding a genuinely new lane also needs a new agents/*.md file, because Claude Code discovers agents statically at startup.",
+
+  "_efforts_note": "Rungs below were verified empirically against the Codex CLI on 2026-09-05, not copied from docs. Both models reject 'minimal'. The API additionally accepts 'none' on gpt-5.6-luna (but not on gpt-6-astra); it is omitted here because an implementation lane should never run without reasoning. 'ultra' is not an API reasoning.effort value at all -- it is a Codex CLI construct that adds internal task delegation -- and it is accepted on both models, contrary to upstream's claim that it is Sol-only. It is verified working but DELIBERATELY NOT DECLARED here: it burns tokens fast enough that it should be an explicit, deliberate opt-in. Add the ultra string to a lane's efforts array to enable it; until then lane.sh refuses it like any other undeclared rung.",
 
   "lanes": {
     "routine": {
@@ -14,18 +16,10 @@
 
     "complex": {
       "agent": "implementer-complex",
-      "model": "gpt-5.6-sol",
-      "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"],
-      "timeout_seconds": 1800,
-      "route_when": "Judgment the spec cannot capture decides the outcome: subtle concurrency, non-trivial algorithms, security-sensitive paths, gnarly debugging, wide-blast-radius refactors, or the routine lane already failed on a corrected spec."
-    },
-
-    "alt": {
-      "agent": "implementer-alt",
       "model": "gpt-6-astra",
-      "efforts": null,
+      "efforts": ["low", "medium", "high", "xhigh", "max"],
       "timeout_seconds": 1800,
-      "route_when": "Third opinion, or the newest model. Race it against the routine lane on high-stakes work and let the architect pick the stronger diff."
+      "route_when": "Judgment the spec cannot capture decides the outcome: subtle concurrency, non-trivial algorithms, security-sensitive paths, gnarly debugging, wide-blast-radius refactors, or the routine lane already failed on a corrected spec. Also the second runner when racing two lanes on one spec."
     }
   }
 }
