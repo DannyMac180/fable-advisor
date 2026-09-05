@@ -82,6 +82,31 @@ The shipped rungs were probed against the live CLI on 2026-09-05 rather than cop
 
 **One honest limitation:** a lane maps 1:1 to an agent file, because Claude Code discovers agents statically at startup. You can re-point the two shipped lanes at any models you like without touching an agent — but a genuinely *third* lane also needs a new `agents/*.md`, copied from an existing one.
 
+## Testing it
+
+Three levels, cheapest first.
+
+**Free — the routing logic, no model calls.** Everything except codex itself:
+
+```bash
+scripts/lane.sh list                    # what is configured
+scripts/lane.sh validate routine xhigh  # exit 0
+scripts/lane.sh validate routine ultra  # exit 4, refuses rather than rounding
+scripts/smoke.sh --dry-run              # print each lane's exact codex command
+```
+
+**A few thousand tokens — that codex actually answers.** One tiny read-only call per lane, at the lowest declared rung:
+
+```bash
+scripts/smoke.sh              # every lane
+scripts/smoke.sh complex      # one lane
+scripts/smoke.sh --effort max # at a specific rung
+```
+
+It fails loudly on an unauthenticated CLI, a model your account cannot reach, a spent quota, or a rung the API rejects — the four things that actually break a lane in practice.
+
+**A real task — the whole pattern.** Ask the architect for something small in a scratch repo and watch it route, delegate, verify and review. This is the only level that exercises the spec contract and the empty-diff check, and the only one that costs real money.
+
 ## Use it
 
 Just ask for work — the orchestration skill routes it:
