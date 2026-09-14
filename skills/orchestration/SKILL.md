@@ -24,14 +24,14 @@ What stays with the architect regardless of cost: decomposition, interface desig
 | Lane | Producer | Invoke | Route here when |
 |---|---|---|---|
 | Routine | GPT-5.6 Luna (effort per task) | `codex-implementer` agent | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** Requires the codex CLI. |
-| High-complexity | GPT-5.6 Sol (effort per task, up to `ultra`) | `sol-implementer` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task once. One-off escalations, never the default. Requires the codex CLI. |
+| High-complexity | GPT-5.6 Sol (effort per task, up to `ultra`) | `sol-implementer` agent | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane has already failed the task twice. One-off escalations, never the default. Requires the codex CLI. |
 | Review | Fable 5.1 (inherits session effort) | `fable-advisor` agent | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
 
 Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → the default Luna lane; you will verify anyway. A lot, and mistakes are costly → escalate to `sol-implementer`, or keep that piece with the architect. A routine-lane task that fails its spec once gets a corrected spec; twice, it escalates to Sol — repetition is evidence the task was misclassified.
 
 Both implementation lanes are the cross-vendor half of the pattern: their output comes from a non-Anthropic family, so the Claude architect's verification and the Fable review are genuine cross-vendor checks, not same-family self-review.
 
-If either lane returns `unavailable` or `timeout`, say so explicitly in your report and decide: re-route to the other codex lane (Luna ↔ Sol), or keep the piece with the architect. Never quietly absorb the substitution or the cost change. Both lanes fail loudly on a missing or unauthenticated codex CLI — there is no Claude fallback inside a lane by design.
+If either lane returns `unavailable`, `timeout`, or `execution-error`, say so explicitly in your report and decide: re-route to the other codex lane (Luna ↔ Sol), or keep the piece with the architect. An `unavailable` whose REASON is a CLI/helper version mismatch or a sandbox write denial is a host problem, not a lane problem; re-routing Luna ↔ Sol will fail identically, so fix the host (`/codex:setup`) or, for the sandbox case only, resend the same spec with the line `sandbox-fallback: allowed` if the operator accepts codex running under their own configured sandbox mode. Never quietly absorb the substitution or the cost change. Both lanes fail loudly on a missing or unauthenticated codex CLI — there is no Claude fallback inside a lane by design.
 
 ## Choosing the reasoning effort
 
@@ -91,3 +91,5 @@ The plugin's optional stop-time review gate (`/codex:setup --enable-review-gate`
 ## Verification
 
 Reports are claims, not evidence. Before accepting any lane's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. An empty diff with a clean exit is a refusal, not a success — the lanes report it as `refused`; treat it as one. A lane that reports a spec gap gets a corrected spec, not a "use your judgment".
+
+The lane's `DIAGNOSTICS:` and `SANDBOX:` lines are for the human; surface them verbatim in your report.
