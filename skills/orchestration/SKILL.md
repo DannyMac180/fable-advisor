@@ -72,6 +72,8 @@ A spec you can't finish writing is a signal the decision isn't made yet — that
 
 Independent specs (no shared files, no ordering dependency) launch as parallel agents in a single message. Sequential chains and single-file surgery stay serial. For high-stakes work, run `codex-implementer` and `sol-implementer` on the same spec and let the architect pick the stronger diff — two capability tiers, one judged result.
 
+The two codex lanes isolate themselves: each works in its own git worktree (under `~/.fable-lanes`, or `$LANE_ROOT`) started from the caller's current state, and hands back a `lanes/<id>` branch plus an `APPLY:` line instead of editing the caller's tree. Parallel lanes therefore never see each other's files. Apply each branch yourself after reading its diff, then delete it. Put `ISOLATION: shared` in a spec only when the repo's build expects sibling folders next to the checkout; the lane then runs in place, and parallel lanes on that repo must stay serial. `muse-implementer` still runs in place.
+
 ## Commitment boundaries and the final review
 
 Consult `fable-advisor` (read-only, verdict in under 300 words) at the moments that decide whether the next hour is wasted:
