@@ -110,7 +110,12 @@ T=$(command -v gtimeout || command -v timeout || true)
 
 EFFORT="<value from the spec's REASONING line, or empty>"
 
+# Lane profile: codex layers ${CODEX_HOME:-~/.codex}/lane.config.toml over config.toml when the
+# file exists (no skills catalogue, plugins or personal hooks). No file, no flag.
+PROFILE=$([ -f "${CODEX_HOME:-$HOME/.codex}/lane.config.toml" ] && echo lane)
+
 ${T:+$T 1800} codex exec \
+  ${PROFILE:+--profile $PROFILE} \
   --model gpt-5.6-sol \
   ${EFFORT:+-c model_reasoning_effort=$EFFORT} \
   --sandbox workspace-write \
@@ -124,6 +129,7 @@ Flag discipline (non-negotiable):
 
 | Flag | Why |
 |---|---|
+| `${PROFILE:+--profile $PROFILE}` | Only when `~/.codex/lane.config.toml` exists. The profile drops the skills catalogue, plugins and personal hooks, so codex starts on the spec instead of following a skill's workflow (observed 2026-09-23: runs read 3-11 skill files, and one hit the 30-minute cap before its first edit). Never point `CODEX_HOME` at another directory for the same effect: on Windows a scoped home loses the elevated sandbox setup and codex silently cannot write. |
 | `--sandbox workspace-write` | Codex writes code, scoped to the working tree. Never `danger-full-access`. |
 | `-c model_reasoning_effort=$EFFORT` | Only when the spec named one. The architect chose it for this task; the lane passes it through unchanged. |
 | `--skip-git-repo-check` + `--cd "${WORK:-$(pwd)}"` | Deterministic working root: the lane's own worktree when isolated, the caller's directory under `ISOLATION: shared` or outside git. |
