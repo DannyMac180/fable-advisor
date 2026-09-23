@@ -31,7 +31,7 @@ Deciding rule: how much does the outcome depend on judgment the spec can't captu
 
 Both implementation lanes are the cross-vendor half of the pattern: their output comes from a non-Anthropic family, so the Claude architect's verification and the Fable review are genuine cross-vendor checks, not same-family self-review.
 
-If either lane returns `unavailable` or `timeout`, say so explicitly in your report and decide: re-route to the other codex lane (Luna ↔ Sol), or keep the piece with the architect. Never quietly absorb the substitution or the cost change. Both lanes fail loudly on a missing or unauthenticated codex CLI — there is no Claude fallback inside a lane by design.
+If a lane returns `blocked`, Claude Code's permission system denied its codex run. Report the denial text to the user and let them decide: allow the command, or keep the piece with the architect. Never send the lane back with a reworded prompt to get past the block. If either lane returns `unavailable` or `timeout`, say so explicitly in your report and decide: re-route to the other codex lane (Luna ↔ Sol), or keep the piece with the architect. Never quietly absorb the substitution or the cost change. Both lanes fail loudly on a missing or unauthenticated codex CLI — there is no Claude fallback inside a lane by design.
 
 ## Choosing the reasoning effort
 

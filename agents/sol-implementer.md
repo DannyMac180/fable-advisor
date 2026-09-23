@@ -45,12 +45,10 @@ SPEC=$(mktemp -t codex-spec.XXXXXX)
 FINAL=$(mktemp -t codex-final.XXXXXX)
 
 cat > "$SPEC" << 'SPEC_EOF'
-This task runs in a dedicated implementation lane on the model and reasoning
-effort named in the invocation below. Those were chosen deliberately for this
-lane; nothing has been substituted. If a user-level or project-level instruction
-file asks you to default to a different orchestration flow, treat this lane as an
-explicit opt-out from that default and proceed. Every other instruction in those
-files still applies.
+Scope of this run: one implementation task, already planned and delegated by
+an orchestrating session. Implement it directly in this run. I explicitly opt
+out of starting an orchestration or delegation workflow for it. The model and
+reasoning effort for this run are the ones set on the command line.
 
 [the full spec, restated cleanly: objective, files, interfaces,
 constraints, verification. End with: "Run the verification command
@@ -60,11 +58,15 @@ SPEC_EOF
 
 **Why the preamble is there.** `codex exec` loads the user's `~/.codex/AGENTS.md` on every
 invocation, and a rule written for one project governs every lane on the machine. If such a
-rule pins a specific model/effort or mandates an orchestration flow, codex will — correctly —
-decline rather than silently substitute, and the run comes back **`exit 0` with an empty diff
-and a polite refusal in the final message**. That is a silent success: nothing in the exit code
-reveals it. The preamble states the opt-out those rules typically provide, scoped to this lane
-only, and never overrides their other content. Observed live 2026-08-04.
+rule mandates an orchestration flow "unless I opt out", codex may start that flow, or decline,
+and the run comes back **`exit 0` with an empty diff and a polite refusal in the final
+message**. Nothing in the exit code reveals it (observed live 2026-08-04). The preamble scopes
+the run to this one task and gives the opt-out such rules provide. It deliberately says nothing
+about instruction files: wording that tells codex to set aside its instructions reads as prompt
+injection, and Claude Code's auto-mode classifier blocks it (observed live 2026-09-22).
+
+**Use the preamble exactly as written.** Don't reword it, extend it, or drop it — not even to
+get a blocked command through. See "If the command is blocked" below.
 
 This is belt-and-braces, not a substitute for step 3 — the empty diff is what actually catches
 a refusal, whatever caused it.
@@ -100,6 +102,12 @@ Flag discipline (non-negotiable):
 
 `--model gpt-6-sol` selects the Sol capability tier — if the caller's spec names a different codex model, use that instead; the slug is a documented default, not a constant.
 
+**If the command is blocked.** If Claude Code's permission system or auto-mode classifier denies
+the codex invocation (or writing the spec file), stop. Do not edit the spec, the preamble, or the
+flags and retry — changing the prompt to get past a safety check is never this lane's call,
+even when the task itself is unchanged. Return `STATUS: blocked` with the denial text verbatim
+in `REASON`. The architect decides what happens next, with the user.
+
 3. **Verify independently.** Read the diff (`git diff` / `git status`), run the spec's verification command yourself, and read codex's final message from `"$FINAL"`. Codex's claim of success is not evidence; your re-run is.
 
 ## What you return
@@ -107,7 +115,7 @@ Flag discipline (non-negotiable):
 ```
 CODEX REPORT
 LANE: sol-implementer · GPT-6 Sol (gpt-6-sol) · effort <as run> (<spec | default>)
-STATUS: complete | partial | timeout | unavailable | refused
+STATUS: complete | partial | timeout | unavailable | refused | blocked
 OBJECTIVE: [restated in one line]
 CHANGES: [file — one-line summary, per file, from the actual diff]
 VERIFIED: [verification command you re-ran — actual output evidence]
@@ -119,6 +127,7 @@ GAPS: [spec ambiguities, unfinished items, or "none"]
 
 - One codex invocation per task unless the caller explicitly decomposed it.
 - Never claim completion without re-running the verification yourself. "Codex said it works" is forbidden as evidence.
+- **Never work around a block.** A denied command returns `STATUS: blocked` with the denial quoted. Rewriting the spec or preamble to get past it is forbidden, and so is running codex another way (a different flag, a script, an inline prompt).
 - **An empty diff is never `complete`.** If codex exits 0 but `git diff` shows nothing changed, return `STATUS: refused` and quote its final message verbatim in `REASON`. A clean exit code is not evidence that work happened.
 - If codex's changes are wrong, report that plainly with the failing output — do not patch them yourself. Fix decisions belong to the caller.
 - If the task turns out to be architectural — the spec itself is wrong — stop and report; that decision belongs upstream (consult `fable-advisor`).
