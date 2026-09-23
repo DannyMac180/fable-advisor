@@ -2,17 +2,17 @@
 
 **Fable 5.1 runs the show. Codex does the typing at the effort each task deserves, and Fable reviews before anything ships.**
 
-<a href="https://github.com/DannyMac180/fable-advisor/raw/main/assets/fable-advisor-demo.mp4"><img src="assets/fable-advisor-demo-poster.png" alt="30-second demo: Fable 5.1 orchestrates, GPT-5.6 Luna implements, Fable 5.1 reviews" width="100%"></a>
+<a href="https://github.com/DannyMac180/fable-advisor/raw/main/assets/fable-advisor-demo.mp4"><img src="assets/fable-advisor-demo-poster.png" alt="30-second demo: Fable 5.1 orchestrates, GPT-6 Luna implements, Fable 5.1 reviews" width="100%"></a>
 
-<p align="center"><em>▶ 30s demo — Fable 5.1 orchestrates → GPT-5.6 Luna implements → Fable 5.1 reviews</em></p>
+<p align="center"><em>▶ 30s demo — Fable 5.1 orchestrates → GPT-6 Luna implements → Fable 5.1 reviews</em></p>
 
 Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session runs on **Fable 5.1**, acting as a full-time architect. It owns requirements, decomposition, specs, and verification — routes every implementation task to the right lane at the right reasoning effort — and gets a clean-context **Fable 5.1** review of the finished work before calling anything done:
 
 | Lane | Producer | Invocation | Route here when |
 |---|---|---|---|
 | Free | **Meta Muse Spark 1.3 via OpenCode (free contributor tier)** | `muse-implementer` agent | free cross-vendor lane for research, data prep, scripts and routine work cleared for the free tier |
-| Routine | **GPT-5.6 Luna** | `codex-implementer` agent (default) | The spec fully determines the outcome — Codex does the typing via the [Codex CLI](https://github.com/openai/codex) |
-| High-complexity | **GPT-5.6 Sol** | `sol-implementer` agent | One-off tasks where judgment the spec can't capture decides the outcome: subtle concurrency, hard debugging, security-sensitive paths, wide refactors |
+| Routine | **GPT-6 Luna** | `codex-implementer` agent (default) | The spec fully determines the outcome — Codex does the typing via the [Codex CLI](https://github.com/openai/codex) |
+| High-complexity | **GPT-6 Sol** | `sol-implementer` agent | One-off tasks where judgment the spec can't capture decides the outcome: subtle concurrency, hard debugging, security-sensitive paths, wide refactors |
 | Review | **Fable 5.1** | `fable-advisor` agent | Commitment boundaries, and **always once at the end** — the advisor reviews the accumulated changes before the architect reports done |
 
 **Nothing is pinned to a reasoning effort.** The architect names the effort per task in the spec (`REASONING: low … max`, and `ultra` on Sol), and the lanes pass it through unchanged — mechanical edits run cheap and fast, the hard escalations run at max or ultra. The session and the advisor run at whatever `/effort` you set.
@@ -51,7 +51,7 @@ Then start your session as the architect:
 
 - **Claude Code ≥ 2.1.170** with a subscription that includes Fable 5.1 (Pro, Max, Team, or Enterprise — all current consumer plans qualify). The agents use the `fable` alias, which resolves to Fable 5.1.
 - **No Fable access** (e.g. API-key billing)? Change `model: fable` → `model: opus` in `agents/fable-advisor.md` and run the session on Opus. Same pattern, the Fable role shifts down to Opus.
-- The codex lanes need the Codex CLI; the Muse lane needs the OpenCode CLI installed and authenticated (`npm i -g @openai/codex`, then `codex login`). `codex-implementer` invokes **GPT-5.6 Luna** (`gpt-5.6-luna`, efforts low–max) and `sol-implementer` invokes **GPT-5.6 Sol** (`gpt-5.6-sol`, efforts low–ultra). GPT-5.6 access may be limited during preview; without model access, an installed/authenticated CLI, or successful authentication, a lane reports `STATUS: unavailable` — it never silently falls back to a Claude model. Without Codex at all, the pattern degrades to advisor-only mode (below).
+- The codex lanes need the Codex CLI; the Muse lane needs the OpenCode CLI installed and authenticated (`npm i -g @openai/codex`, then `codex login`). `codex-implementer` invokes **GPT-6 Luna** (`gpt-6-luna`, efforts low–max) and `sol-implementer` invokes **GPT-6 Sol** (`gpt-6-sol`, efforts low–ultra). GPT-6 Sol and Luna need codex-cli 0.156.1 or newer — older CLIs get HTTP 400 ("not supported when using Codex with a ChatGPT account"); without model access, an installed/authenticated CLI, or successful authentication, a lane reports `STATUS: unavailable` — it never silently falls back to a Claude model. Without Codex at all, the pattern degrades to advisor-only mode (below).
 - **Optional: the [Codex plugin for Claude Code](https://github.com/openai/codex-plugin-cc)** (`/plugin marketplace add openai/codex-plugin-cc`, then `/plugin install codex@openai-codex`). When it's enabled, the orchestration skill uses `/codex:adversarial-review` as a GPT-family second reviewer ahead of the Fable review, `/codex:rescue` as a user-driven delegation path, and `/codex:setup` to diagnose a lane that reports `unavailable`. Not a dependency — the lanes drive `codex exec` directly either way.
 - Heads-up: if a pinned Claude model isn't available on your account, Claude Code silently falls back to your session model — the pattern degrades quietly rather than erroring. If advisor verdicts feel unremarkable, check your plan. (This quiet fallback applies only to Claude model pins — the codex lanes always fail loudly with a structured error.)
 
@@ -114,7 +114,9 @@ touching 3+ files, consult the fable-advisor agent and act on its verdict.
 
 **Why not just let Fable write the code too?** You can. It's excellent. It's also the most expensive model per token, and most of a session's tokens are implementation mechanics that the codex lanes handle at near-parity — and from a different vendor, which buys you a real second opinion. Spend the premium where it changes outcomes: the architecture and the final review.
 
-**Upgrading from v4?** v5 moves the session architect from Opus to **Fable 5.1**, replaces the Fable 5 `fable-implementer` lane with **`sol-implementer`** (GPT-5.6 Sol via Codex), and **unpins reasoning effort everywhere** — the architect names it per task in a new sixth spec line. The advisor is now Fable 5.1. The Codex plugin integration is new and optional. If you still want a Claude implementation lane, grab [`fable-implementer.md` from the v4.0 tree](https://github.com/DannyMac180/fable-advisor/blob/ad2bdc3/agents/fable-implementer.md).
+**Upgrading to 5.4.0?** Both codex lanes moved to the GPT-6 generation: `codex-implementer` runs `gpt-6-luna`, `sol-implementer` runs `gpt-6-sol`, with the same effort ladders as before. Update the Codex CLI to 0.156.1 or newer first (`codex --version`); an older CLI makes both lanes report `STATUS: unavailable`.
+
+**Upgrading from v4?** v5 moves the session architect from Opus to **Fable 5.1**, replaces the Fable 5 `fable-implementer` lane with **`sol-implementer`** (GPT-5.6 Sol via Codex, GPT-6 Sol since 5.4.0), and **unpins reasoning effort everywhere** — the architect names it per task in a new sixth spec line. The advisor is now Fable 5.1. The Codex plugin integration is new and optional. If you still want a Claude implementation lane, grab [`fable-implementer.md` from the v4.0 tree](https://github.com/DannyMac180/fable-advisor/blob/ad2bdc3/agents/fable-implementer.md).
 
 **Upgrading from v3?** v4 moved the architect to Opus, removed the Grok 4.5 lane, and made `codex-implementer` the default typing lane; if you still want the Grok lane, grab [`grok-implementer.md` from the v3.1 tree](https://github.com/DannyMac180/fable-advisor/blob/b3b50a9/agents/grok-implementer.md).
 
