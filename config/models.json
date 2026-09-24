@@ -1,0 +1,30 @@
+{
+  "_comment": "Models /fable-advisor:setup offers per lane. Update each release; setup also accepts any typed model ID.",
+  "lanes": {
+    "routine": {
+      "provider": "openai",
+      "recommended": "gpt-6-luna",
+      "options": [
+        { "id": "gpt-6-luna", "label": "GPT-6 Luna", "efforts": ["low", "medium", "high", "xhigh", "max"], "default_effort": "max" },
+        { "id": "gpt-6-sol", "label": "GPT-6 Sol", "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "default_effort": "medium" }
+      ]
+    },
+    "complex": {
+      "provider": "openai",
+      "recommended": "gpt-6-sol",
+      "options": [
+        { "id": "gpt-6-sol", "label": "GPT-6 Sol", "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "default_effort": "high" },
+        { "id": "gpt-6-luna", "label": "GPT-6 Luna", "efforts": ["low", "medium", "high", "xhigh", "max"], "default_effort": "max" }
+      ]
+    },
+    "reviewer": {
+      "provider": "anthropic",
+      "recommended": "fable",
+      "options": [
+        { "id": "fable", "label": "Fable 5.1" },
+        { "id": "opus", "label": "Opus 5.5" },
+        { "id": "sonnet", "label": "Sonnet 5" }
+      ]
+    }
+  }
+}
