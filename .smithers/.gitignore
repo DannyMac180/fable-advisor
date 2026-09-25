@@ -1,0 +1,22 @@
+# Ephemeral data (never commit)
+node_modules/
+executions/
+runs/
+reports/
+sandboxes/
+remote/
+state/
+tmp/
+*.db
+*.sqlite
+*.db-shm
+*.db-wal
+# PGlite/Postgres durable store (the default backend's data dir)
+pg/
+migrated.json
+dist/
+.DS_Store
+
+# Log files
+*.log
+logs/
