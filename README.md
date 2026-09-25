@@ -54,6 +54,10 @@ Then pick whichever model you want as the architect — the plugin doesn't choos
 
 Model resolution order in Claude Code: `CLAUDE_CODE_SUBAGENT_MODEL` env var → per-invocation `model` parameter → agent frontmatter → session model. **Don't set `CLAUDE_CODE_SUBAGENT_MODEL`** (check the `env` block of `~/.claude/settings.json` too): it overrides the advisor's `fable` pin, so your "Fable" review silently runs on another model. Effort resolution: `CLAUDE_CODE_EFFORT_LEVEL` env var → agent frontmatter `effort` → session `/effort`. None of this plugin's agents set a Claude `effort`, so the advisor follows your session; the codex lanes use their own defaults (Luna `max`, Sol `high`) unless the spec overrides them.
 
+## Choose your lane models
+
+Run `/fable-advisor:setup` once after installing. It asks which model you want for each lane, with the recommended one listed first: the routine implementer (GPT-6 Luna), the high-complexity implementer (GPT-6 Sol) and the reviewer (Fable 5.1). For the implementer lanes it also asks the default reasoning effort. It saves your choices to `~/.claude/fable-advisor/lanes.json`, and the orchestration skill uses them instead of the built-in defaults. You can re-run it any time. The model list lives in `config/models.json`, and you can also type any other model ID. For now the implementer lanes run OpenAI models through Codex and the reviewer runs Claude models.
+
 ## Use it
 
 With the plugin installed, just ask for work — the orchestration skill routes it:
