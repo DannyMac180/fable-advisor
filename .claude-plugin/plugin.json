@@ -1,6 +1,6 @@
 {
   "name": "fable-advisor",
-  "version": "6.0.1",
+  "version": "6.1.0",
   "description": "Architect-as-orchestrator for Claude Code on any session model: it writes specs and verdicts, GPT-6 Luna (via Codex, effort max by default) does the routine typing, GPT-6 Sol (effort high by default) takes the high-complexity one-offs, every step is labelled with its model, and Fable 5.1 reviews every deliverable before it ships.",
   "author": {
     "name": "Dan McAteer",
