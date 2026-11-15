@@ -66,13 +66,13 @@ Workers share none of your conversation context. Every delegation prompt carries
 3. **Interfaces** — signatures, types, or API shapes the code must match
 4. **Constraints** — project conventions, things not to touch
 5. **Verification** — the command(s) that prove it works
-6. **Lane** — required: one line, `LANE: <routine | complex> · EFFORT: <effort>`, matching the `effort` you pass on the call (the lane default, or the override the task calls for). The worker copies it into its report; only the model ID comes from the worker itself
+6. **Lane** — required: one line, `LANE: <routine | complex> · EFFORT: <effort> · ISOLATION: <worktree | none>`. `EFFORT` matches the `effort` you pass on the call (the lane default, or the override the task calls for); `ISOLATION` is `worktree` only when you pass `isolation: "worktree"`. The worker copies lane and effort into its report and commits only on `worktree`; only the model ID comes from the worker itself
 
 A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to a cheaper model.
 
 ## Parallelism
 
-Independent specs (no shared files, no ordering dependency) launch as parallel implementer calls in a single message. Sequential chains and single-file surgery stay serial. A worker in the main checkout leaves its changes uncommitted; a worker run with `isolation: "worktree"` commits to its own branch and reports it, and the architect merges. (The full worktree-and-merge flow arrives with `/fable-advisor:build`.)
+Independent specs (no shared files, no ordering dependency) launch as parallel implementer calls in a single message. Sequential chains and single-file surgery stay serial. A worker with `ISOLATION: none` leaves its changes uncommitted in your checkout; a worker you start with `isolation: "worktree"` and `ISOLATION: worktree` commits on that worktree's branch and reports it, and the architect merges. (The full worktree-and-merge flow arrives with `/fable-advisor:build`.)
 
 ## Commitment boundaries and the final review
 

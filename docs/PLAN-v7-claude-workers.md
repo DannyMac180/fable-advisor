@@ -33,7 +33,7 @@ Opus 5.5 costs half as much per token as Fable 5.2 ($4/$20 vs $8/$40 per MTok). 
 
 - `model: opus` by default; lanes.json overrides it per call. Tools: `Read, Edit, Write, Bash, Glob, Grep`. UI colour blue.
 - It takes the six-part spec. It returns a fixed report: `LANE:` (model + effort), `STATUS:` (`done` / `spec-gap` / `failed` / `refused`), `BRANCH:`, `COMMIT:`, files changed, and the exact verification output.
-- **It commits its work in its own worktree** on a branch named `v7/<run>/<spec-id>`. The branch is the deliverable. A committed worktree is what lets the session merge (§3). `/build` itself is the user's request to make these local commits. Workers never push and never touch the user's branch.
+- **It commits its work in its own worktree** on the branch its isolation worktree was created on (PR 2 checks how that branch is named). The branch is the deliverable. A committed worktree is what lets the session merge (§3). `/build` itself is the user's request to make these local commits. Workers never push and never touch the user's branch.
 - An empty diff with exit 0 is reported as `refused`, as the Codex lanes did in v6.
 - **To verify in PR 1:** whether subagent system prompts include the model ID, so `LANE:` can report the model that actually ran. That would catch Claude Code's silent fallback and a `CLAUDE_CODE_SUBAGENT_MODEL` override. If they don't include it, drop the self-report and rely on the setup-time warning.
 
@@ -45,7 +45,7 @@ Opus 5.5 costs half as much per token as Fable 5.2 ($4/$20 vs $8/$40 per MTok). 
 | `complex` | Opus 5.5 (`opus`) | `high` | Judgment the spec can't capture decides the outcome, or routine failed once |
 | `reviewer` | Fable 5.2 (`fable`) | session effort | Commitment boundaries and the final review |
 
-Both worker lanes are the same agent at different efforts. Every call passes `effort` explicitly. Opus 5.5 defaults to `medium`, and leaving it implicit invites drift. The spec's `REASONING:` line overrides the lane's effort (`low` … `max`; `ultra` disappears with Sol).
+Both worker lanes are the same agent at different efforts. Every call passes `effort` explicitly. Opus 5.5 defaults to `medium`, and leaving it implicit invites drift. The spec's required `LANE: <lane> · EFFORT: <effort> · ISOLATION: <worktree | none>` line names the lane's effort or an override (`low` … `max`; `ultra` disappears with Sol). The worker commits only when `ISOLATION: worktree`.
 
 ### 3. `/fable-advisor:build <task>`, the workflow entry point
 
@@ -86,7 +86,7 @@ Rewrite `skills/orchestration/SKILL.md`:
 
 - `config/models.json`: Anthropic-only. Worker lanes: `opus` (Opus 5.5), `sonnet` (Sonnet 5.5), `fable` (Fable 5.2), each with its effort list (`low` … `max`). Reviewer: `fable`, `opus`.
 - **Models must be aliases** the Agent tool and `agent()` accept (`opus`, `sonnet`, `haiku`, `fable`). Setup rejects any other typed ID instead of saving one that will silently fall back.
-- `lanes.json` → `version: 2`: `{routine, complex, reviewer}`, each `{model, effort}`. **A v1 file with `provider: "openai"` lanes is ignored, with a one-time notice** to re-run `/fable-advisor:setup`. Workers then use the v7 defaults.
+- `lanes.json` → `version: 2`: `{routine, complex, reviewer}`, workers `{model, effort}`, reviewer `{model}`. **A v1 file with `provider: "openai"` lanes is ignored, with a one-time notice** to re-run `/fable-advisor:setup`. Workers then use the v7 defaults.
 - `commands/setup.md`: drop the codex login check. Warn if `CLAUDE_CODE_SUBAGENT_MODEL` is set in the environment or in `~/.claude/settings.json`. Keep the same-model warning (reviewer == worker model).
 - **Find out what the `fable` alias resolves to** in the installed Claude Code. If it's Fable 5.2, only the labels change. If it isn't, find out whether frontmatter accepts a full ID.
 
