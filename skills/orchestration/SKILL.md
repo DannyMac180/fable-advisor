@@ -18,9 +18,10 @@ The session is the architect. It owns the requirements, the design, the specs, t
 - **The saving is on the volume.** Output tokens and fresh input cost half as much on Opus as on Fable. Cache reads cost the same, so a long, mostly cached context saves less than the headline price suggests.
 - **A worker starts from nothing.** It re-reads the files it needs. You pay Fable prices for writing its spec and for reading its report and diff.
 - **Judge by cost per finished, verified task.** A cheap call that comes back wrong and needs a second round can cost more than doing the work yourself.
+- **Measured:** on three small multi-part tasks (each about a minute of solo Fable work), `/fable-advisor:build` cost about 2.8× what a Fable session working alone did, with the same pass rate. The Opus workers were 14% of that; the rest was Fable's own overhead (specs, merges, checks, review). When you can finish a task yourself in a few minutes, do it yourself. See `docs/measurements.md`.
 
 Delegation pays when:
-- the work is large next to its spec: multi-file features, test suites, boilerplate, mechanical edits across many files;
+- the work is large next to its spec: features and test suites big enough that writing them yourself would take well beyond a few minutes, or mechanical edits across many files;
 - pieces can run in parallel;
 - a search would read many files whose contents you won't need afterwards. Give it to a read-only agent with `model: "haiku"` and keep only its conclusion.
 
@@ -48,7 +49,7 @@ Both worker lanes are the same agent. They differ only in the `model` and `effor
 - **A file with no version, or `version: 1`,** is the v6 Codex format. Use the defaults and tell the user once to re-run setup.
 - **No file:** use the defaults and suggest setup once.
 
-**Check the model that actually ran.** The implementer's report carries the model ID from its own system prompt. If it doesn't match the pinned lane (`claude-opus-5-5` for `opus`, `claude-fable-5-2` for `fable`, `claude-sonnet-5-5` for `sonnet`, `claude-haiku-5-5` for `haiku`), say so. Claude Code silently falls back to the session model when a pinned model isn't available, and `CLAUDE_CODE_SUBAGENT_MODEL` overrides every pin.
+**Check the model that actually ran.** The implementer's report carries the model ID from its own system prompt. If it doesn't match the pinned lane (`claude-opus-5-5` for `opus`, `claude-fable-5-2` for `fable`, `claude-sonnet-5-5` for `sonnet`, `claude-haiku-5-5` for `haiku`), say so. The advisor's verdict starts with a `REVIEWER:` line, which works the same way: on Claude Code before 2.1.321, `fable` resolves to Fable 5.1. Claude Code also silently falls back to the session model when a pinned model isn't available, and `CLAUDE_CODE_SUBAGENT_MODEL` overrides every pin.
 
 **Choosing the lane.** How much does the outcome depend on judgment the spec can't carry? Little → routine. A lot, and mistakes are costly → complex, or keep the piece yourself. A routine task that fails once gets a corrected spec; if it fails twice, move it to complex.
 

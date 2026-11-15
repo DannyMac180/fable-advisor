@@ -18,7 +18,7 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 
 **You can see which model runs each step.** The orchestration skill labels every delegation with its model and effort (`Opus 5.5 · medium: add pagination`, `Fable 5.2: final review`), and every worker report names the model ID that actually ran, so a silent fallback shows up.
 
-Tokens route by price: the session emits judgment and specs, the Opus workers emit the code at half Fable's per-token price ($4/$20 vs $8/$40 per MTok), and the Fable premium is spent where it changes outcomes: the architecture and the final review.
+**What it costs, measured.** Opus 5.5 is half Fable 5.2's per-token price ($4/$20 vs $8/$40 per MTok), but that doesn't make orchestration cheaper by itself. On three small multi-part tasks, a Fable session working alone was **about 2.8× cheaper and 3× faster** than `/fable-advisor:build`, with the same pass rate. The Opus workers cost little; Fable's own overhead (specs, merges, checks, the review) cost more than the whole solo task. So use Fable alone for work it can finish in a few minutes. Reach for `/build` when you want parallel isolated work and an independent review, and treat savings on larger builds as unproven. Numbers and method are in [`docs/measurements.md`](docs/measurements.md).
 
 The plugin ships the **orchestration skill** — the doctrine that gives the session what delegation costs and when it pays, when to use each lane and effort level, the six-part spec that makes context-free delegation safe, and the verification rules that keep every worker honest. It's written for a Fable 5.2 architect: it gives the cost facts and leaves the call to the model, rather than fixed rules like "never type code yourself".
 
@@ -46,7 +46,7 @@ Then pick whichever model you want as the architect — the plugin doesn't choos
 
 ## Requirements
 
-- **Claude Code ≥ 2.1.170** with a subscription that includes Fable (Pro, Max, Team, or Enterprise — all current consumer plans qualify). The agents use the `opus` and `fable` aliases, which resolve to Opus 5.5 and Fable 5.2 (checked on Claude Code 2.1.316).
+- **Claude Code ≥ 2.1.321** with a subscription that includes Fable (Pro, Max, Team, or Enterprise — all current consumer plans qualify). The agents use the `opus` and `fable` aliases. On 2.1.321 and 2.1.325, `fable` resolves to Fable 5.2. **On 2.1.316 it resolves to Fable 5.1**, so the review and any Fable lane would silently run the older model. Update with `claude update`; the reviewer's first line names the model it ran on, so you can check.
 - **No Fable access** (e.g. API-key billing)? Run `/fable-advisor:setup` and pick Opus 5.5 for the reviewer. In lite mode (the agent file alone, no skill), change `model: fable` → `model: opus` in `agents/fable-advisor.md` instead. Same pattern; the review becomes a clean-context Opus check.
 - **Nothing else.** v7 workers are Claude Code subagents — no Codex CLI, no extra login.
 - **Optional: the [Codex plugin for Claude Code](https://github.com/openai/codex-plugin-cc)** (`/plugin marketplace add openai/codex-plugin-cc`, then `/plugin install codex@openai-codex`). When it's enabled, the orchestration skill runs `/codex:adversarial-review` ahead of the Fable review on security-sensitive, migration, and API-shape deliverables. It's the only check in the pattern from outside the Claude family. Not a dependency.
