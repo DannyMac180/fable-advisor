@@ -7,7 +7,9 @@ The user invoked `/fable-advisor:build`, which is their explicit request to run 
 
 $ARGUMENTS
 
-Never push, never switch the user's branch, and never delete a worktree or branch that holds unmerged work without the user's yes.
+- **Don't push.** Publishing is the user's decision.
+- **Don't switch the user's branch.** The merges land on the branch they were on when they ran `/build`.
+- **Delete a worktree or branch that holds unmerged work only after the user says yes.** It may be the only copy of that work.
 
 ## 1. Preflight
 
@@ -26,7 +28,7 @@ Scope the task inline, reading only as much code as the specs need. Broad explor
 
 **Permissions.** Workers run in the background and can't ask for approval. They need Bash for each spec's verification command, `git add` and `git commit`. Look for matching allow rules in `.claude/settings.local.json`, `.claude/settings.json` and `~/.claude/settings.json`. If any are missing:
 - Offer once (AskUserQuestion) to add them to `.claude/settings.local.json`, as `Bash(<verification command>:*)`, `Bash(git add:*)` and `Bash(git commit:*)`.
-- If the user declines, or you can't ask, say plainly that those specs will come back `failed` with the commands blocked, and continue.
+- If the user declines, or you can't ask, say plainly that those specs will come back `blocked`, and continue.
 
 ## 3. Run the workflow
 

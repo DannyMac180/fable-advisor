@@ -6,7 +6,7 @@
 
 <p align="center"><em>▶ 30s demo (v5, Codex lanes) — orchestrator → worker implements → Fable reviews</em></p>
 
-Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session — on whichever model you think is best — acts as a full-time architect. It owns requirements, decomposition, specs, and verification, routes every implementation task to the right lane, and gets a clean-context **Fable 5.2** review of the finished work before calling anything done:
+Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session — on whichever model you think is best — acts as the architect. It owns requirements, decomposition, specs, and verification, decides which implementation to hand to which lane, and gets a clean-context **Fable 5.2** review of the finished work before calling anything done:
 
 | Lane | Model · default effort | Invocation | Route here when |
 |---|---|---|---|
@@ -20,7 +20,7 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 
 Tokens route by price: the session emits judgment and specs, the Opus workers emit the code at half Fable's per-token price ($4/$20 vs $8/$40 per MTok), and the Fable premium is spent where it changes outcomes: the architecture and the final review.
 
-The plugin ships the **orchestration skill** — the routing doctrine that teaches the session when to use each lane and each effort rung, the cost discipline that keeps the session's token volume minimal (emit judgment not volume, keep context lean, reason once then hand off), the six-part spec contract that makes context-free delegation safe, and the verification rules that keep every worker honest.
+The plugin ships the **orchestration skill** — the doctrine that gives the session what delegation costs and when it pays, when to use each lane and effort level, the six-part spec that makes context-free delegation safe, and the verification rules that keep every worker honest. It's written for a Fable 5.2 architect: it gives the cost facts and leaves the call to the model, rather than fixed rules like "never type code yourself".
 
 ## Go deeper
 
@@ -85,17 +85,16 @@ The session writes up to five independent specs per round. A Claude Code Workflo
 
 Failed or unmerged worktrees, and leftovers from earlier runs, are listed and removed only if you say yes.
 
-Workers run in the background and can't ask for permission. Allow each spec's verification command, `git add` and `git commit` (`/build` offers to add them to `.claude/settings.local.json`), or those specs come back `failed`. Workflows only run when you invoke `/build` or ask for one; otherwise the architect sends parallel implementer calls.
+Workers run in the background and can't ask for permission. Allow each spec's verification command, `git add` and `git commit` (`/build` offers to add them to `.claude/settings.local.json`), or those specs come back `blocked`. Workflows only run when you invoke `/build` or ask for one; otherwise the architect sends parallel implementer calls.
 
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
 ```
-You are the architect — minimize your own token volume. Delegate all
-implementation through the orchestration skill's routing table (never
-type code yourself), label each delegation with its model, delegate broad
-codebase exploration to cheap read-only agents, verify evidence before
-accepting any worker's report, and get a fable-advisor review before
-reporting any deliverable done.
+You are the architect. Use the orchestration skill to decide, from its
+cost table, which implementation to hand to the implementer lanes and
+which to do yourself. Label each delegation with its model, check the
+evidence before accepting a worker's report, and get a fable-advisor
+review before reporting any deliverable done.
 ```
 
 ## Commitment boundaries and the final review

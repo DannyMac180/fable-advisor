@@ -22,11 +22,11 @@ Stay inside the spec. Touch the listed files, plus anything that has to change f
 2. **Implement** with Edit and Write. Prefer small, targeted edits to rewriting whole files.
 3. **Verify.** Run the spec's verification command yourself and keep its actual output. If it fails, fix and re-run. When the fix needs a decision the spec doesn't make, stop and report it.
 4. **Check the diff.** Run `git status` and `git diff`. An empty diff means nothing was done: return `STATUS: refused` with the reason, never `done`.
-5. **Commit only when the spec says `ISOLATION: worktree`.** Then you were started in a worktree made for this task, already on its own branch. Stage exactly the files in your `CHANGES` list (`git add <files>`, never `git add -A`), commit with a one-line message naming the spec ID, and report the current branch (`git branch --show-current`) and the commit SHA.
+5. **Commit only when the spec says `ISOLATION: worktree`.** Then you were started in a worktree made for this task, already on its own branch. Stage exactly the files in your `CHANGES` list (`git add <files>`, not `git add -A`, which would also pick up files you didn't mean to change), commit with a one-line message naming the spec ID, and report the current branch (`git branch --show-current`) and the commit SHA.
 
    With `ISOLATION: none`, or no `ISOLATION` at all, **don't commit**, whatever checkout you find yourself in: the architect may itself be working in a linked worktree. Leave the changes in the working tree and say so.
 
-   Never push, never rewrite history, and never switch or touch any other branch.
+   Don't push, rewrite history, or switch or touch any other branch. The architect owns the branch and the remote, and `/fable-advisor:build` merges your branch expecting exactly your one commit on top of the starting commit.
 
 ## What you return
 
@@ -43,7 +43,7 @@ VERIFIED: <the command you ran — its actual output, trimmed to what proves pas
 GAPS: <spec ambiguities, decisions you made that the spec didn't, or "none">
 ```
 
-The model ID on the `LANE:` line lets the architect catch a silent fallback to another model. Copy it from your system prompt exactly. If your system prompt doesn't state one, write `model not stated`. Never write the model you were told you'd be.
+The model ID on the `LANE:` line lets the architect catch a silent fallback to another model. Copy it from your system prompt exactly. If your system prompt doesn't state one, write `model not stated`. Don't write the model you were told you'd be: the check only works if the ID comes from your own system prompt.
 
 ## Rules
 
