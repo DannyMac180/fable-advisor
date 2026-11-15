@@ -1,6 +1,12 @@
 # Plan — v7: Fable orchestrates, Opus workers implement, Fable reviews
 
-Status: decisions made (2026-11-15). PR 1 implemented on `claude/v7-pr1-implementer`.
+Status: decisions made (2026-11-15). PR 1 merged as 7.0.0 (DannyMac180/fable-advisor#29). PR 2 (`/fable-advisor:build`, 7.1.0) implemented on `claude/v7-pr2-build`.
+
+**Checked in scratch repos before and during PR 2:**
+- An `isolation: "worktree"` Agent call creates `.claude/worktrees/agent-<id>` on branch `worktree-agent-<id>`. A workflow `agent()` with isolation creates `worktree-wf_<run>-<n>`. So `/build` reads the path and branch from the worker's report and never guesses them from a naming pattern.
+- A worktree whose agent made changes is kept after the agent finishes, including a failed attempt's uncommitted changes. That's why cleanup lists leftovers and removes them only with a yes.
+- Background workers can't ask for approval. Without allow rules for the tests, `git add` and `git commit`, the implementer reports `failed` with the blocked commands quoted.
+- Running `/fable-advisor:build` headless on Opus, two routine specs that both edit `calc.py` gave: 2 worker commits, a merge conflict resolved by the session, 3/3 tests passing on the merged tree, a Fable 5.2 "ship" review, and both worktrees and branches removed. The write to `.git/info/exclude` was denied in headless mode, and the command now continues when that happens.
 
 **Checked during PR 1 (Claude Code 2.1.316):** the `fable` alias resolves to `claude-fable-5-2` and `opus` to `claude-opus-5-5`. Subagents started with an explicit `model` state their model ID in their system prompt, so the `LANE:` self-report works. That was checked on a `general-purpose` subagent; the plugin's own `implementer` is checked once installed.
 

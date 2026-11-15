@@ -1,6 +1,6 @@
 {
   "name": "fable-advisor",
-  "version": "7.0.0",
+  "version": "7.1.0",
   "description": "Architect-as-orchestrator for Claude Code on any session model: it writes specs and verdicts, Opus 5.5 workers do the typing (routine lane at medium effort, complex lane at high), every step is labelled with the model that ran it, and Fable 5.2 reviews every deliverable before it ships.",
   "author": {
     "name": "Dan McAteer",

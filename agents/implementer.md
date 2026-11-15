@@ -35,6 +35,7 @@ IMPLEMENTER REPORT
 LANE: <lane from the spec> · <the exact model ID your system prompt says you run on> · effort <effort from the spec>
 STATUS: done | spec-gap | failed | refused
 SPEC: <spec ID> — <objective in one line>
+WORKTREE: <output of git rev-parse --show-toplevel>
 BRANCH: <current branch, or "uncommitted">
 COMMIT: <short SHA, or "none">
 CHANGES: <file — one-line summary, per file, from the actual diff>
