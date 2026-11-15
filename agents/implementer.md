@@ -26,7 +26,7 @@ Stay inside the spec. Touch the listed files, plus anything that has to change f
 
    With `ISOLATION: none`, or no `ISOLATION` at all, **don't commit**, whatever checkout you find yourself in: the architect may itself be working in a linked worktree. Leave the changes in the working tree and say so.
 
-   Never push, never rewrite history, and never switch or touch any other branch.
+   Don't push, rewrite history, or switch or touch any other branch. The architect owns the branch and the remote, and `/fable-advisor:build` merges your branch expecting exactly your one commit on top of the starting commit.
 
 ## What you return
 

@@ -1,106 +1,117 @@
 ---
 name: orchestration
-description: Routing doctrine for the architect-as-orchestrator pattern — how the session (on whatever model the user chose) delegates implementation to the `implementer` agent on the routine lane (Opus 5.5 · medium) or the complex lane (Opus 5.5 · high), passes each lane's model and effort explicitly, labels every delegation with its model, and gets every deliverable reviewed by the Fable advisor before reporting done. USE WHEN delegating implementation work, choosing between the routine and complex lanes, choosing a reasoning effort for a worker, writing a spec for a subagent, deciding whether to consult fable-advisor, managing session cost or token spend, or running any multi-task build where the session is the architect.
+description: How the architect session (often Fable 5.2) weighs delegating implementation to the `implementer` agent — routine lane (Opus 5.5 · medium) or complex lane (Opus 5.5 · high) — against doing it itself, writes the spec, labels each delegation with its model, checks the evidence, and gets the work reviewed by the Fable advisor before reporting done. USE WHEN deciding whether to delegate implementation, choosing between the routine and complex lanes or an effort level, writing a spec for a subagent, consulting fable-advisor, managing session cost or token spend, or running a multi-task build where the session is the architect.
 ---
 
-# Orchestration — the architect's routing doctrine
+# Orchestration — the architect's doctrine
 
-The session is the architect: it owns requirements, architecture, decomposition, specs, routing, and verification. It should almost never type implementation code. The session runs on whatever model the user picked — this doctrine doesn't depend on it. Every implementation task goes to the `implementer` agent on the cheapest adequate lane, with the lane's model and effort passed explicitly, and every finished deliverable gets a Fable review before the architect reports done.
+The session is the architect. It owns the requirements, the design, the specs, the routing and the judgment of evidence. The `implementer` agent can do the typing on a cheaper model, and the `fable-advisor` agent reviews the finished work in a clean context. Whether a given piece of work is worth delegating is the architect's call, made from the costs below. The session can run on any model; this doctrine is written with a Fable 5.2 architect in mind.
 
-## Cost discipline — the prime directive
+## What delegation costs, and when it pays
 
-The economics of this pattern: the session model orchestrates (judgment-heavy, volume-light), Opus 5.5 workers do the typing (volume-heavy, half Fable's per-token price: $4/$20 vs $8/$40 per MTok; cache reads cost $0.20 on both), and Fable 5.2 reviews in a clean context before anything ships. Three rules follow.
+| | Input $/MTok | Output $/MTok | Cache read $/MTok |
+|---|---|---|---|
+| Fable 5.2 (architect, reviewer) | $8 | $40 | $0.20 |
+| Opus 5.5 (implementer) | $4 | $20 | $0.20 |
+| Haiku 5.5 (read-only exploration) | $0.10 | $0.50 | — |
 
-**Emit judgment, not volume.** The architect's output is decomposition, specs, routing decisions, verdicts on diffs, and short reports. It does not type implementation code, test bodies, boilerplate, or config files. A code block longer than an interface signature or a few illustrative lines is a spec that hasn't been delegated yet — stop and delegate it. Fixing a worker's bug by hand is the same failure in disguise: send a corrected spec back instead.
+- **The saving is on the volume.** Output tokens and fresh input cost half as much on Opus as on Fable. Cache reads cost the same, so a long, mostly cached context saves less than the headline price suggests.
+- **A worker starts from nothing.** It re-reads the files it needs. You pay Fable prices for writing its spec and for reading its report and diff.
+- **Judge by cost per finished, verified task.** A cheap call that comes back wrong and needs a second round can cost more than doing the work yourself.
 
-**Keep the context lean.** Everything in the architect's context is re-read at the session model's prices on every turn. Delegate broad exploration, codebase searches, and log-grepping to a cheap read-only agent (`model: "haiku"`) and keep only the conclusions; read files yourself only when the decision genuinely depends on the exact code. Don't paste long files, full diffs, or verbose command output into the conversation when a path reference or an excerpt will do.
+Delegation pays when:
+- the work is large next to its spec: multi-file features, test suites, boilerplate, mechanical edits across many files;
+- pieces can run in parallel;
+- a search would read many files whose contents you won't need afterwards. Give it to a read-only agent with `model: "haiku"` and keep only its conclusion.
 
-**Reason once, then hand off.** Do the hard thinking — the architecture, the interface design, the debugging hypothesis — in one pass, capture it in the spec, and let the worker carry it from there. Re-deriving decisions across turns burns the premium twice.
+It doesn't pay when:
+- the change is one you can see and make in fewer tokens than the spec would take, such as a one-line fix, a rename in a file you've already read, or a small fix to a worker's diff;
+- the hard part is a judgment you'd have to write out in full in the spec anyway;
+- you'd read the same two or three files yourself to write the spec.
 
-What stays with the architect regardless of cost: decomposition, interface design, hypothesis selection when debugging, spec writing, lane routing, and judging verification evidence.
+If you keep patching the same worker's output, the task was on the wrong lane, or the spec was missing a decision. Fix that, not the diff.
+
+**Write decisions down once.** Put the architecture, the interface choices and the debugging hypothesis into the spec, so no worker has to re-derive them. Revisit a decision when a report, a test or the review contradicts it, not otherwise.
 
 ## The lanes
 
-| Lane | Agent | Model · effort (default) | Route here when |
+| Lane | Agent | Model · effort (default) | Use when |
 |---|---|---|---|
-| Routine | `implementer` | Opus 5.5 (`opus`) · `medium` | The spec fully determines the outcome: boilerplate, wiring, CRUD, mechanical edits, straightforward features. **Default lane.** |
-| Complex | `implementer` | Opus 5.5 (`opus`) · `high` | The outcome depends heavily on judgment the spec can't capture: subtle concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide-blast-radius refactors — or the routine lane already failed the task once. |
-| Review | `fable-advisor` | Fable 5.2 (`fable`) · session effort | Not an implementation lane. Commitment boundaries and the mandatory end-of-deliverable review — see below. |
+| Routine | `implementer` | Opus 5.5 (`opus`) · `medium` | The spec fully determines the outcome: wiring, CRUD, mechanical edits, straightforward features |
+| Complex | `implementer` | Opus 5.5 (`opus`) · `high` | Judgment the spec can't capture decides the outcome: concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide refactors, or a routine attempt that already failed |
+| Review | `fable-advisor` | Fable 5.2 (`fable`) · session effort | Commitment boundaries and the end-of-deliverable review (below) |
 
-Both worker lanes are the same agent; they differ only in the model and effort the architect passes. **Always pass both on every call** — the Agent tool's `model` and `effort` parameters. Opus 5.5 defaults to `medium` and an agent with no `model` can end up on the session model, so leaving either implicit invites silent drift (and, on a Fable session, Fable prices).
+Both worker lanes are the same agent. They differ only in the `model` and `effort` you pass on the Agent call, and you pass both every time. An agent started without a model can end up on the session model (on a Fable session, at Fable prices), and Opus 5.5 defaults to `medium` effort.
 
-**User-pinned lane models.** Before the first delegation, read `~/.claude/fable-advisor/lanes.json` if it exists (written by `/fable-advisor:setup`). A `"version": 2` file overrides the defaults above: pass `routine.model` / `complex.model` and their `effort` on implementer calls, and `reviewer.model` on `fable-advisor` calls. Label delegations with the pinned model. A file with no version or `version: 1` is the v6 Codex format: ignore it, use the defaults, and tell the user once to re-run `/fable-advisor:setup`. If the file is missing, use the defaults and suggest setup once.
+**Pinned models.** Before the first delegation, read `~/.claude/fable-advisor/lanes.json` if it exists (written by `/fable-advisor:setup`).
+- **A `"version": 2` file overrides the defaults above.** Pass `routine` / `complex` `model` and `effort` on implementer calls, and `reviewer.model` on advisor calls.
+- **A file with no version, or `version: 1`,** is the v6 Codex format. Use the defaults and tell the user once to re-run setup.
+- **No file:** use the defaults and suggest setup once.
 
-Deciding rule: how much does the outcome depend on judgment the spec can't capture? Little → routine; you will verify anyway. A lot, and mistakes are costly → complex, or keep that piece with the architect. A routine task that fails its spec once gets a corrected spec; twice, it moves to the complex lane — repetition is evidence the task was misclassified.
+**Check the model that actually ran.** The implementer's report carries the model ID from its own system prompt. If it doesn't match the pinned lane (`claude-opus-5-5` for `opus`, `claude-fable-5-2` for `fable`), say so. Claude Code silently falls back to the session model when a pinned model isn't available, and `CLAUDE_CODE_SUBAGENT_MODEL` overrides every pin.
 
-**Check the model that actually ran.** The implementer's `LANE:` line carries the model ID from its own system prompt. If it doesn't match the lane's pinned model (for example `claude-opus-5-5` for `opus`), say so in your report: Claude Code silently falls back to the session model when a pinned model isn't available, and `CLAUDE_CODE_SUBAGENT_MODEL` overrides every pin.
+**Choosing the lane.** How much does the outcome depend on judgment the spec can't carry? Little → routine. A lot, and mistakes are costly → complex, or keep the piece yourself. A routine task that fails once gets a corrected spec; if it fails twice, move it to complex.
 
-## Choosing the reasoning effort
+**Effort.** Move off the lane default when the task gives a reason:
+- `low`: purely mechanical edits;
+- `xhigh`: a second attempt, or a change with a wide blast radius;
+- `max`: only where time and tokens don't matter.
 
-The routine lane runs at `medium` and the complex lane at `high` unless the task calls for another rung — then put it on the spec's `LANE:` line and pass the same rung as the call's `effort`. Override deliberately: drop to `low` for purely mechanical edits, raise to `xhigh`/`max` when a task has already resisted an attempt or the blast radius is wide.
+The architect's and the advisor's effort come from the session (`/effort`). Fable 5.2 is tuned to start at `high`; drop to `medium` for routine turns where the quality holds.
 
-| Rung | Use for |
-|---|---|
-| `low` | Mechanical edits, renames, wiring, config, tests that mirror an existing pattern |
-| `medium` | Routine default: ordinary features where the spec decides everything that matters |
-| `high` | Complex default: real logic with design decisions left to the worker |
-| `xhigh` | Tricky multi-file changes with interactions, the second attempt after a spec correction |
-| `max` | The hardest single tasks: concurrency, security-sensitive paths, gnarly debugging |
+## Briefing a worker: the spec
 
-The architect's own effort and the advisor's come from the session (`/effort`). Raise the session effort before an architecture decision or a final review that deserves it; drop it back for routine turns.
+Workers share none of your conversation. Every implementer prompt carries all six parts:
+
+1. **Objective:** what to build or change, in one paragraph, with a short spec ID.
+2. **Files:** the exact paths to create or modify.
+3. **Interfaces:** the signatures, types or API shapes the code must match.
+4. **Constraints:** project conventions, and what not to touch.
+5. **Verification:** the command or commands that prove it works.
+6. **Lane:** one line, `LANE: <routine | complex> · EFFORT: <effort> · ISOLATION: <worktree | none>`.
+   - `EFFORT` matches the `effort` you pass on the call.
+   - `ISOLATION` is `worktree` only when you pass `isolation: "worktree"`. The worker commits only then.
+
+If you can't finish writing the spec, the decision isn't made yet. Make it before delegating.
 
 ## Showing which model runs each step
 
-- **Label the Agent `description`** with the model and effort, in the form `<Model> · <effort>: <task>` — for example `Opus 5.5 · medium: add pagination to /orders`, `Opus 5.5 · high: fix token-refresh race`, `Fable 5.2: final review`.
-- **Announce the routing** in one line before each delegation: `→ implementer · routine · Opus 5.5 · medium (default)`, or `(override)` when the spec names the rung. For the advisor: `→ fable-advisor · Fable 5.2`.
-- **Keep the worker's `LANE:` line** when you summarize a report — it names the model that actually ran.
+- **Label each call.** Put `<Model> · <effort>: <task>` in the Agent `description`, for example `Opus 5.5 · medium: add pagination to /orders` or `Fable 5.2: final review`.
+- **Announce the routing** in one line before the call, for example `→ implementer · routine · Opus 5.5 · medium`.
+- **Keep the report's `LANE:` line** when you summarize it.
 
-The agents carry UI colours (implementer blue, advisor purple).
+## Parallel work and `/fable-advisor:build`
 
-## The spec contract
+Independent specs (no shared files, no ordering dependency) can go out as parallel implementer calls in one message.
+- A worker with `ISOLATION: none` leaves its changes uncommitted in your checkout.
+- A worker you start with `isolation: "worktree"` commits on its worktree's branch and reports it, and you merge it.
 
-Workers share none of your conversation context. Every delegation prompt carries all six parts:
-
-1. **Objective** — what to build or change, one paragraph, with a short spec ID
-2. **Files** — exact paths to create or modify
-3. **Interfaces** — signatures, types, or API shapes the code must match
-4. **Constraints** — project conventions, things not to touch
-5. **Verification** — the command(s) that prove it works
-6. **Lane** — required: one line, `LANE: <routine | complex> · EFFORT: <effort> · ISOLATION: <worktree | none>`. `EFFORT` matches the `effort` you pass on the call (the lane default, or the override the task calls for); `ISOLATION` is `worktree` only when you pass `isolation: "worktree"`. The worker copies lane and effort into its report and commits only on `worktree`; only the model ID comes from the worker itself
-
-A spec you can't finish writing is a signal the decision isn't made yet — that's architect work, not a reason to hand the ambiguity to a cheaper model.
-
-## Parallelism
-
-Independent specs (no shared files, no ordering dependency) launch as parallel implementer calls in a single message. Sequential chains and single-file surgery stay serial. A worker with `ISOLATION: none` leaves its changes uncommitted in your checkout; a worker you start with `isolation: "worktree"` and `ISOLATION: worktree` commits on that worktree's branch and reports it, and the architect merges it.
-
-## `/fable-advisor:build` — the workflow path
-
-A Workflow runs **only** when the user invokes `/fable-advisor:build` or asks for a workflow in their own words. This skill loading by itself isn't that opt-in. Without it, independent specs go out as parallel implementer calls in one message, as above.
-
-The command holds the full procedure. What the architect needs to know when choosing it:
-
-- **Each round runs up to 5 independent specs**, each in its own worktree under `.claude/worktrees/` on its own `worktree-…` branch (the worker's report names both), with one automatic retry per `failed` spec (`blocked`, `spec-gap`, `refused` and crashed workers go back to the architect). Dependent work waits for the next round, because every worktree branches from `HEAD`.
-- **Workers can't ask for permission.** Each spec's verification command, `git add` and `git commit` must be allowed, or the spec comes back `failed`.
-- **Merging happens in the session.** Branches merge in spec-ID order with `--no-ff`. A conflict is either resolved or re-specced against the merged tree. The full checks then run once on the merged tree, before the `fable-advisor` review.
-- **Nothing unmerged is deleted without a yes.** Merged worktrees and branches are removed. Failed or unmerged ones, and leftovers from earlier runs, are listed and removed only if the user agrees.
+**Workflows.** A Workflow runs only when the user invokes `/fable-advisor:build` or asks for a workflow in their own words. This skill loading isn't that opt-in. The command holds the full procedure. What matters when choosing it:
+- **Rounds:** up to 5 independent specs per round. Each runs in its own worktree under `.claude/worktrees/`, on its own `worktree-…` branch (the report names both). A `failed` spec gets one automatic retry. `blocked`, `spec-gap`, `refused` and crashed workers come back to you.
+- **Dependent work waits for the next round,** because every worktree branches from `HEAD`.
+- **Permissions:** workers can't ask for approval. Each spec's verification command, `git add` and `git commit` must be allowed, or the spec comes back `blocked`.
+- **Merging and checks:** the session merges in spec-ID order with `--no-ff`, resolving each conflict or re-speccing the piece. The full checks then run once on the merged tree, before the review.
+- **Cleanup:** merged worktrees and branches are removed. Unmerged ones, and leftovers from earlier runs, are listed, and removed only on the user's yes.
 
 ## Commitment boundaries and the final review
 
-Consult `fable-advisor` (read-only, verdict in under 300 words) at the moments that decide whether the next hour is wasted:
+Consult `fable-advisor` (read-only; it answers in under ~300 words) when a wrong call would waste the next stretch of work:
+- before committing to an architecture, data migration, API shape or refactor strategy;
+- when the same problem has resisted two distinct attempts;
+- **once at the end of every deliverable,** before you report done. It reads the changes against the stated goal rather than the conversation, and returns ship, fix-first or rethink.
 
-- Before committing to an architecture, data migration, API shape, or refactor strategy
-- Whenever the same problem has resisted two distinct attempts
-- **Always, once, at the end of a deliverable** — the advisor reads the accumulated changes with fresh eyes, against the stated goal rather than the conversation, and returns ship / fix-first / rethink. The architect does not report done before this review.
+Give it the decision, or for the final review the diff and the goal, plus the constraints and the options you considered. Act on the verdict, or tell the user where you disagree and why.
 
-Pass it the decision (or, for final review, the diff and the stated goal), the constraints, and the options considered. Act on the verdict or surface the disagreement — never silently ignore it.
+When the architect is also Fable, the review is the same model with a fresh context. It still catches what the conversation's assumptions hid, but it isn't a second model's opinion. Every worker is a Claude model too.
 
-What the review buys depends on the session model. When the architect runs on something other than Fable, the final review is a second model — the strongest one — reading the diff in a clean context. When the architect is also Fable, it is a fresh-eyes check rather than an independent-model check: still worth it, because it reads the diff against the goal rather than the conversation. Every worker is a Claude model, so none of this is a cross-vendor check — for that, see the optional Codex review below.
+**Optional cross-vendor review.** If the OpenAI Codex plugin for Claude Code is installed (`codex@openai-codex`), run `/codex:adversarial-review` on the diff before the advisor's final review, for deliverables that touch security-sensitive code, a migration or an API shape. It's the only check in this pattern from outside the Claude family; pass its findings to the advisor. Leave that plugin's stop-time review gate off, since it overlaps with the advisor review and can loop.
 
-## Optional cross-vendor review
+## Checking the evidence
 
-If the official OpenAI Codex plugin for Claude Code is installed (`codex@openai-codex`), run `/codex:adversarial-review` on the accumulated diff *before* the `fable-advisor` final review on any deliverable that touched a security-sensitive path, a migration, or an API shape. It is the only check in this pattern from outside the Claude family; feed its findings into the advisor consult. Leave the plugin's stop-time review gate off — it overlaps with the mandatory advisor review and can loop. Without the plugin the pattern is unchanged.
+A report is a claim. Before accepting a worker's work, read the diff and re-run the verification command, or check its quoted output against the working tree. A report with no command output isn't done.
 
-## Verification
-
-Reports are claims, not evidence. Before accepting any worker's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. An empty diff is a refusal, not a success — the implementer reports it as `refused`; treat it as one. `blocked` means the permission system denied a command the worker needed: surface the denied commands to the user, never route around them. A worker that reports `spec-gap` gets a corrected spec, not a "use your judgment".
+| Status | What it means | What to do |
+|---|---|---|
+| `refused` | An empty diff, so nothing was done | Treat it as a refusal |
+| `blocked` | The permission system denied a command the worker needed | Show the user the denied commands. Getting them allowed is the user's decision, so don't route around the denial |
+| `spec-gap` | The spec was missing a decision | Send a corrected spec, not "use your judgment" |

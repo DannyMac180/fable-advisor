@@ -7,7 +7,9 @@ The user invoked `/fable-advisor:build`, which is their explicit request to run 
 
 $ARGUMENTS
 
-Never push, never switch the user's branch, and never delete a worktree or branch that holds unmerged work without the user's yes.
+- **Don't push.** Publishing is the user's decision.
+- **Don't switch the user's branch.** The merges land on the branch they were on when they ran `/build`.
+- **Delete a worktree or branch that holds unmerged work only after the user says yes.** It may be the only copy of that work.
 
 ## 1. Preflight
 

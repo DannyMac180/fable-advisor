@@ -1,6 +1,6 @@
 # Plan — v7: Fable orchestrates, Opus workers implement, Fable reviews
 
-Status: decisions made (2026-11-15). PR 1 merged as 7.0.0 (DannyMac180/fable-advisor#29). PR 2 (`/fable-advisor:build`, 7.1.0) implemented on `claude/v7-pr2-build`.
+Status: decisions made (2026-11-15). PR 1 merged as 7.0.0 (DannyMac180/fable-advisor#29). PR 2 merged as 7.1.0 (DannyMac180/fable-advisor#30). PR 3 (doctrine rewrite, 7.2.0) on `claude/v7-pr3-doctrine`; audit in `docs/audit-fable-5-2.md`.
 
 **Checked in scratch repos before and during PR 2:**
 - An `isolation: "worktree"` Agent call creates `.claude/worktrees/agent-<id>` on branch `worktree-agent-<id>`. A workflow `agent()` with isolation creates `worktree-wf_<run>-<n>`. So `/build` reads the path and branch from the worker's report and never guesses them from a naming pattern.
