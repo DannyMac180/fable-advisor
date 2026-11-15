@@ -1,29 +1,34 @@
 {
-  "_comment": "Models /fable-advisor:setup offers per lane. Update each release; setup also accepts any typed model ID.",
+  "_comment": "Models /fable-advisor:setup offers per lane. Claude Code model aliases only: the Agent tool and Workflow agent() accept opus, sonnet, haiku, fable. Update labels each release.",
+  "version": 2,
+  "aliases": ["opus", "sonnet", "haiku", "fable"],
   "lanes": {
     "routine": {
-      "provider": "openai",
-      "recommended": "gpt-6-luna",
+      "agent": "implementer",
+      "recommended": "opus",
+      "default_effort": "medium",
       "options": [
-        { "id": "gpt-6-luna", "label": "GPT-6 Luna", "efforts": ["low", "medium", "high", "xhigh", "max"], "default_effort": "max" },
-        { "id": "gpt-6-sol", "label": "GPT-6 Sol", "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "default_effort": "medium" }
+        { "id": "opus", "label": "Opus 5.5", "efforts": ["low", "medium", "high", "xhigh", "max"] },
+        { "id": "sonnet", "label": "Sonnet 5.5", "efforts": ["low", "medium", "high", "xhigh", "max"] },
+        { "id": "fable", "label": "Fable 5.2", "efforts": ["low", "medium", "high", "xhigh", "max"] }
       ]
     },
     "complex": {
-      "provider": "openai",
-      "recommended": "gpt-6-sol",
+      "agent": "implementer",
+      "recommended": "opus",
+      "default_effort": "high",
       "options": [
-        { "id": "gpt-6-sol", "label": "GPT-6 Sol", "efforts": ["low", "medium", "high", "xhigh", "max", "ultra"], "default_effort": "high" },
-        { "id": "gpt-6-luna", "label": "GPT-6 Luna", "efforts": ["low", "medium", "high", "xhigh", "max"], "default_effort": "max" }
+        { "id": "opus", "label": "Opus 5.5", "efforts": ["low", "medium", "high", "xhigh", "max"] },
+        { "id": "fable", "label": "Fable 5.2", "efforts": ["low", "medium", "high", "xhigh", "max"] },
+        { "id": "sonnet", "label": "Sonnet 5.5", "efforts": ["low", "medium", "high", "xhigh", "max"] }
       ]
     },
     "reviewer": {
-      "provider": "anthropic",
+      "agent": "fable-advisor",
       "recommended": "fable",
       "options": [
-        { "id": "fable", "label": "Fable 5.1" },
-        { "id": "opus", "label": "Opus 5.5" },
-        { "id": "sonnet", "label": "Sonnet 5" }
+        { "id": "fable", "label": "Fable 5.2" },
+        { "id": "opus", "label": "Opus 5.5" }
       ]
     }
   }
