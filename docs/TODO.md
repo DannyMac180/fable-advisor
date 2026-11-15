@@ -1,11 +1,10 @@
-# TODO — per-lane model selection follow-ups
+# TODO
 
-Prototype shipped: `/fable-advisor:setup` + `~/.claude/fable-advisor/lanes.json`. Still open:
+v7 plan: `docs/PLAN-v7-claude-workers.md`. PR 1 (Claude `implementer`, Codex lanes removed, lanes.json v2) is done. Still open:
 
-- [ ] **Cross-provider lanes.** Codex lanes are Bash wrappers with no Edit/Write; a Claude implementer needs its own agent. Ship one agent per provider per role and route by `provider` in lanes.json.
-- [ ] **Neutral role names.** Agent descriptions and the routing doctrine hardcode "GPT-6 Luna", "Fable 5.1", etc. Rename to roles ("routine implementer") and show the model only in delegation labels.
-- [ ] **OpenAI reviewer.** The advisor is a read-only Claude agent; an OpenAI reviewer needs a `codex review` / read-only `codex exec` wrapper.
-- [ ] **SessionStart first-run nudge.** Hook that detects a missing lanes.json and tells the orchestrator to suggest setup (hooks can't prompt).
-- [ ] **Claude-side effort.** Claude agents take `/effort`, not a flag; decide how a pinned effort applies to Claude lanes.
-- [ ] **Model catalog upkeep.** Refresh `config/models.json` each release; validate typed IDs (e.g. a cheap codex ping).
-- [ ] **Per-project overrides.** Support a project-level lanes.json, but keep it out of shared repos by default (teammates may lack codex).
+- [ ] **`/fable-advisor:build`** (PR 2). Workflow entry point: worktree-isolated workers, session-side merge, full verification on the merged tree, Fable review, cleanup. First check what `isolation: 'worktree'` leaves behind in a scratch repo.
+- [ ] **Doctrine rewrite for Fable 5.2** (PR 3). Replace fixed delegation rules with the cost facts; run the `fable-5-2-prompt-audit` skill on the skill, agents and commands.
+- [ ] **Measure** (PR 4). Fable-solo vs `/build` on three real tasks, cost per completed and verified task, in `docs/measurements.md`.
+- [ ] **SessionStart first-run nudge.** Hook that detects a missing or v1 lanes.json and tells the architect to suggest setup (hooks can't prompt).
+- [ ] **Model catalog upkeep.** Refresh labels in `config/models.json` each release.
+- [ ] **Per-project overrides.** Support a project-level lanes.json, kept out of shared repos by default.

@@ -1,7 +1,7 @@
 {
   "name": "fable-advisor",
-  "version": "6.1.0",
-  "description": "Architect-as-orchestrator for Claude Code on any session model: it writes specs and verdicts, GPT-6 Luna (via Codex, effort max by default) does the routine typing, GPT-6 Sol (effort high by default) takes the high-complexity one-offs, every step is labelled with its model, and Fable 5.1 reviews every deliverable before it ships.",
+  "version": "7.0.0",
+  "description": "Architect-as-orchestrator for Claude Code on any session model: it writes specs and verdicts, Opus 5.5 workers do the typing (routine lane at medium effort, complex lane at high), every step is labelled with the model that ran it, and Fable 5.2 reviews every deliverable before it ships.",
   "author": {
     "name": "Dan McAteer",
     "url": "https://github.com/DannyMac180"
@@ -12,12 +12,11 @@
     "agents",
     "model-routing",
     "fable",
-    "sol",
-    "luna",
+    "opus",
     "advisor",
     "orchestration",
     "architect",
-    "codex",
-    "reasoning-effort"
+    "reasoning-effort",
+    "subagents"
   ]
 }
