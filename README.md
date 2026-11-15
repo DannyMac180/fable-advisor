@@ -18,7 +18,11 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 
 **You can see which model runs each step.** The orchestration skill labels every delegation with its model and effort (`Opus 5.5 · medium: add pagination`, `Fable 5.2: final review`), and every worker report names the model ID that actually ran, so a silent fallback shows up.
 
-**What it costs, measured.** Opus 5.5 is half Fable 5.2's per-token price ($4/$20 vs $8/$40 per MTok), but that doesn't make orchestration cheaper by itself. On three small multi-part tasks, a Fable session working alone was **about 2.8× cheaper and 3× faster** than `/fable-advisor:build`, with the same pass rate. The Opus workers cost little; Fable's own overhead (specs, merges, checks, the review) cost more than the whole solo task. So use Fable alone for work it can finish in a few minutes. Reach for `/build` when you want parallel isolated work and an independent review, and treat savings on larger builds as unproven. Numbers and method are in [`docs/measurements.md`](docs/measurements.md).
+**What it costs, measured.** Opus 5.5 is half Fable 5.2's per-token price ($4/$20 vs $8/$40 per MTok), but in our runs `/fable-advisor:build` never cost less than a Fable session working alone. Both passed every hidden acceptance test.
+- **Small tasks:** Fable alone was about **2.8× cheaper and 3× faster**. Fable's own overhead (specs, merges, checks, the review) cost more than the whole solo task.
+- **One larger task, with a review in both arms:** the costs came out close. `/build` cost about **12% more** ($3.53 vs $3.14), though Opus took about 30% of its spend.
+
+So use Fable alone for work it can finish in a few minutes. Reach for `/build` for parallel isolated work, a check on the merged result and an independent review, not for savings. Numbers and method are in [`docs/measurements.md`](docs/measurements.md).
 
 The plugin ships the **orchestration skill** — the doctrine that gives the session what delegation costs and when it pays, when to use each lane and effort level, the six-part spec that makes context-free delegation safe, and the verification rules that keep every worker honest. It's written for a Fable 5.2 architect: it gives the cost facts and leaves the call to the model, rather than fixed rules like "never type code yourself".
 
@@ -123,7 +127,7 @@ touching 3+ files, consult the fable-advisor agent and act on its verdict.
 
 **Does this work on claude.ai?** No — subagent model routing is Claude Code only (CLI, desktop, VS Code, web).
 
-**Why not just let Fable (or your session model) write the code too?** For small tasks, do exactly that. Measured on three small tasks, Fable alone was about 2.8× cheaper than `/build` with the same pass rate ([`docs/measurements.md`](docs/measurements.md)). The worker lanes and `/build` are for parallel, isolated work with an independent review. Savings on larger builds are unmeasured.
+**Why not just let Fable (or your session model) write the code too?** For small tasks, do exactly that. Measured, Fable alone was about 2.8× cheaper than `/build` on small tasks and about 12% cheaper on one larger, reviewed task ([`docs/measurements.md`](docs/measurements.md)). The worker lanes and `/build` are for parallel, isolated work with an independent review. A saving hasn't been shown at any size tested.
 
 **Upgrading from v6?** v7 drops the Codex lanes: **`luna-implementer` and `sol-implementer` are removed**, replaced by one Claude-native **`implementer`** agent (Opus 5.5) on two lanes, routine at `medium` and complex at `high`. Nothing needs the Codex CLI any more. `lanes.json` moves to version 2 — re-run `/fable-advisor:setup`; a v6 file is ignored until you do. The advisor is now Fable 5.2. What you give up is v6's cross-vendor implementation: every line of code now comes from a Claude model, and the optional `/codex:adversarial-review` is the only check from another family. Update anything (a `CLAUDE.md`, a script) that calls the old agents by name.
 

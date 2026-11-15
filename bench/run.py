@@ -5,7 +5,7 @@ Each run gets a fresh copy of bench/fixture as its own git repo, runs one
 headless Claude Code session, then scores the result with the hidden
 acceptance test for that task (never shown to the model).
 
-  python3 bench/run.py --out DIR [--tasks t1,t2,t3] [--arms solo,build] [--reps 1] [--budget 15]
+  python3 bench/run.py --out DIR [--tasks t1,t2,t3,t4] [--arms solo,solo_review,build] [--reps 1] [--budget 15]
 
 Set CLAUDE_BIN to pick the Claude Code binary. The `fable` alias means Fable 5.2
 only on Claude Code 2.1.321 or later; 2.1.316 resolves it to Fable 5.1, so check
@@ -19,7 +19,7 @@ import argparse, json, os, shutil, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
-TASKS = {"t1": "t1-io.md", "t2": "t2-query.md", "t3": "t3-cli.md"}
+TASKS = {"t1": "t1-io.md", "t2": "t2-query.md", "t3": "t3-cli.md", "t4": "t4-large.md"}
 TOOLS = ["Read", "Edit", "Write", "Glob", "Grep", "Bash(python3 *)", "Bash(git *)"]
 
 
@@ -41,6 +41,18 @@ def session_cmd(arm, task_text, budget):
     if arm == "solo":
         prompt = task_text + "\n\nImplement this yourself in this repository; don't start subagents."
         return base + ["--disallowedTools", "Agent", "Workflow", "--allowedTools", *TOOLS], prompt
+    if arm == "solo_review":
+        # Solo, then one closing review by the plugin's reviewer prompt, loaded
+        # via --agents so no implementer agent or orchestration skill is present.
+        text = open(os.path.join(REPO, "agents", "fable-advisor.md")).read()
+        body = text.split("---", 2)[2].strip()
+        agents = {"reviewer": {"description": "Read-only final reviewer.", "prompt": body,
+                               "tools": ["Read", "Grep", "Glob"], "model": "fable"}}
+        prompt = (task_text + "\n\nImplement this yourself in this repository; don't delegate the implementation. "
+                  "When your tests pass, call the `reviewer` agent exactly once with the task, your diff (`git diff`) "
+                  "and the test output, act on any fix-first items it raises, re-run the tests, and finish.")
+        return base + ["--agents", json.dumps(agents), "--disallowedTools", "Workflow",
+                       "--allowedTools", "Agent", *TOOLS], prompt
     if arm == "build":
         prompt = "/fable-advisor:build " + task_text
         return base + ["--plugin-dir", REPO, "--allowedTools", "Workflow", "Agent", *TOOLS], prompt
