@@ -48,7 +48,6 @@ def session_cmd(arm, task_text, budget):
 
 
 def accept(path, task):
-    src = os.path.join(HERE, "acceptance", f"accept_{task}.py")
     env = dict(os.environ, PYTHONPATH=os.path.join(HERE, "acceptance"))
     r = sh([sys.executable, "-m", "unittest", f"accept_{task}"], path, env=env, timeout=120)
     own = sh([sys.executable, "-m", "unittest"], path, timeout=120)
@@ -75,12 +74,16 @@ def main():
                 fresh_repo(path)
                 cmd, prompt = session_cmd(arm, text, a.budget)
                 t0 = time.time()
-                p = subprocess.run(cmd, cwd=path, input=prompt, capture_output=True, text=True, timeout=3600)
+                try:
+                    p = subprocess.run(cmd, cwd=path, input=prompt, capture_output=True, text=True, timeout=3600)
+                    out_text, err_text = p.stdout, p.stderr
+                except subprocess.TimeoutExpired as e:
+                    out_text, err_text = "", f"session timed out after 3600 s: {e}"
                 wall = round(time.time() - t0)
                 try:
-                    res = json.loads(p.stdout)
+                    res = json.loads(out_text)
                 except json.JSONDecodeError:
-                    res = {"is_error": True, "result": (p.stdout + p.stderr)[-2000:]}
+                    res = {"is_error": True, "result": (out_text + err_text)[-2000:]}
                 ok, detail, own_ok = accept(path, task)
                 row = {
                     "task": task, "arm": arm, "rep": rep, "wall_s": wall,

@@ -110,7 +110,7 @@ Migrate our checkout sessions from Postgres to Redis — plan it,
 consult your advisor before committing, then implement.
 ```
 
-A typical consult costs cents. To make it automatic, add to your project's `CLAUDE.md`:
+A consult is one short read-only call. To make it automatic, add to your project's `CLAUDE.md`:
 
 ```
 Before committing to any architecture decision, migration, or refactor
@@ -123,7 +123,7 @@ touching 3+ files, consult the fable-advisor agent and act on its verdict.
 
 **Does this work on claude.ai?** No — subagent model routing is Claude Code only (CLI, desktop, VS Code, web).
 
-**Why not just let Fable (or your session model) write the code too?** You can. Fable is excellent. It's also the most expensive model per token, and most of a session's tokens are implementation mechanics that Opus 5.5 handles at half the per-token price. Spend the premium where it changes outcomes: the architecture and the final review.
+**Why not just let Fable (or your session model) write the code too?** For small tasks, do exactly that. Measured on three small tasks, Fable alone was about 2.8× cheaper than `/build` with the same pass rate ([`docs/measurements.md`](docs/measurements.md)). The worker lanes and `/build` are for parallel, isolated work with an independent review. Savings on larger builds are unmeasured.
 
 **Upgrading from v6?** v7 drops the Codex lanes: **`luna-implementer` and `sol-implementer` are removed**, replaced by one Claude-native **`implementer`** agent (Opus 5.5) on two lanes, routine at `medium` and complex at `high`. Nothing needs the Codex CLI any more. `lanes.json` moves to version 2 — re-run `/fable-advisor:setup`; a v6 file is ignored until you do. The advisor is now Fable 5.2. What you give up is v6's cross-vendor implementation: every line of code now comes from a Claude model, and the optional `/codex:adversarial-review` is the only check from another family. Update anything (a `CLAUDE.md`, a script) that calls the old agents by name.
 
@@ -133,7 +133,7 @@ touching 3+ files, consult the fable-advisor agent and act on its verdict.
 
 **Upgrading from v3?** v4 moved the architect to Opus, removed the Grok 4.5 lane, and made `codex-implementer` the default typing lane; if you still want the Grok lane, grab [`grok-implementer.md` from the v3.1 tree](https://github.com/DannyMac180/fable-advisor/blob/b3b50a9/agents/grok-implementer.md).
 
-**Why did the GPT lanes go?** Simpler setup and one billing relationship: Claude Code subagents need no second CLI, login, or prompt-injection-proof preamble, and Opus 5.5 does the typing at half Fable's price. The cost is vendor diversity in the code itself. If you want it back for a deliverable, run `/codex:adversarial-review` on the diff, or grab [`luna-implementer.md` from the v6.1 tree](https://github.com/DannyMac180/fable-advisor/blob/9df042b/agents/luna-implementer.md).
+**Why did the GPT lanes go?** Simpler setup and one billing relationship: Claude Code subagents need no second CLI, login, or prompt-injection-proof preamble, and Claude-native workers can use Claude Code's own edit tools and worktrees. The cost is vendor diversity in the code itself. If you want it back for a deliverable, run `/codex:adversarial-review` on the diff, or grab [`luna-implementer.md` from the v6.1 tree](https://github.com/DannyMac180/fable-advisor/blob/9df042b/agents/luna-implementer.md).
 
 ## License
 

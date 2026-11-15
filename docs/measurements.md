@@ -33,6 +33,11 @@ Each cell is the mean of 2 runs, with the range in brackets. Costs are what each
 ## Not like for like
 
 - **Only `/build` ends with a review.** It includes the merge, the full checks and a `fable-advisor` review. The solo runs had no review, although the doctrine says every deliverable should end with one. A fair comparison would add one reviewer call to each solo run. It wasn't run, so the 2.8× ratio overstates the gap by up to the cost of one review.
+- **Parallelism was barely exercised.** Only t1's `/build` runs split the work across two workers. In t2 and t3, the session wrote a single spec, so one worker ran.
+- **The `/build` runs hit some friction.** The write to `.git/info/exclude` was denied in 4 of the 6 runs, and in 1 run the Workflow tool rejected the script path before the inline fallback worked. Both added a little Fable time.
+- **The environment wasn't fully isolated.** `--setting-sources` didn't stop the `/build` runs from reading the user's old (v1) `~/.claude/fable-advisor/lanes.json`. Each run noted it and used the default lanes, which are what was intended anyway.
+- **`subagents: 1` is unexplained.** The session JSON reports it in all six `/build` rows, including t1's two-worker runs, so it probably doesn't count workflow workers. What it counts isn't documented, so it isn't used as evidence of the review.
+- **None of this flips the direction.** The cheapest `/build` run ($1.81) still cost more than the most expensive solo run ($1.00).
 - **The review is confirmed in only 2 of 6 `/build` runs.** In those, the stored final message shows the verdict. The runner kept only the last 1,200 characters of each final message, so the other four can't be confirmed from the record. `bench/run.py` now keeps the full message and per-model token counts for future runs.
 
 ## Method
@@ -48,7 +53,7 @@ Each cell is the mean of 2 runs, with the range in brackets. Costs are what each
 - **The `/build` arm** loaded this repo with `--plugin-dir`, used the default lanes (Opus 5.5, routine at `medium`, complex at `high`), and allowed `python3` and `git` commands.
 - **Claude Code version:** 2.1.325. On 2.1.316, `--model fable` resolves to Fable 5.1, which made a first pilot unusable. The README now requires 2.1.321 or later.
 - **Mid-run edits:** the `REVIEWER:` first line in `agents/fable-advisor.md` and the matching line in the skill were added while the runs were in progress, so later runs loaded them. Their effect on cost is negligible.
-- **Raw data:** `bench/results/2026-11-15-v7.2.jsonl`. Total spend was $16.40.
+- **Raw data:** `bench/results/2026-11-15-v7.2.jsonl`. Total spend was $16.40. The unusable 2.1.316 pilot (task t1, Fable 5.1, $4.57) is in `bench/results/2026-11-15-pilot-cc2.1.316.jsonl`.
 
 To reproduce:
 
