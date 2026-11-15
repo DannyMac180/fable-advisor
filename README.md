@@ -6,7 +6,7 @@
 
 <p align="center"><em>▶ 30s demo (v5, Codex lanes) — orchestrator → worker implements → Fable reviews</em></p>
 
-Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session — on whichever model you think is best — acts as a full-time architect. It owns requirements, decomposition, specs, and verification, routes every implementation task to the right lane, and gets a clean-context **Fable 5.2** review of the finished work before calling anything done:
+Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session — on whichever model you think is best — acts as the architect. It owns requirements, decomposition, specs, and verification, decides which implementation to hand to which lane, and gets a clean-context **Fable 5.2** review of the finished work before calling anything done:
 
 | Lane | Model · default effort | Invocation | Route here when |
 |---|---|---|---|
@@ -85,7 +85,7 @@ The session writes up to five independent specs per round. A Claude Code Workflo
 
 Failed or unmerged worktrees, and leftovers from earlier runs, are listed and removed only if you say yes.
 
-Workers run in the background and can't ask for permission. Allow each spec's verification command, `git add` and `git commit` (`/build` offers to add them to `.claude/settings.local.json`), or those specs come back `failed`. Workflows only run when you invoke `/build` or ask for one; otherwise the architect sends parallel implementer calls.
+Workers run in the background and can't ask for permission. Allow each spec's verification command, `git add` and `git commit` (`/build` offers to add them to `.claude/settings.local.json`), or those specs come back `blocked`. Workflows only run when you invoke `/build` or ask for one; otherwise the architect sends parallel implementer calls.
 
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 

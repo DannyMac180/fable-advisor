@@ -28,7 +28,7 @@ Scope the task inline, reading only as much code as the specs need. Broad explor
 
 **Permissions.** Workers run in the background and can't ask for approval. They need Bash for each spec's verification command, `git add` and `git commit`. Look for matching allow rules in `.claude/settings.local.json`, `.claude/settings.json` and `~/.claude/settings.json`. If any are missing:
 - Offer once (AskUserQuestion) to add them to `.claude/settings.local.json`, as `Bash(<verification command>:*)`, `Bash(git add:*)` and `Bash(git commit:*)`.
-- If the user declines, or you can't ask, say plainly that those specs will come back `failed` with the commands blocked, and continue.
+- If the user declines, or you can't ask, say plainly that those specs will come back `blocked`, and continue.
 
 ## 3. Run the workflow
 

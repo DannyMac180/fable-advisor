@@ -27,18 +27,18 @@ Delegation pays when:
 It doesn't pay when:
 - the change is one you can see and make in fewer tokens than the spec would take, such as a one-line fix, a rename in a file you've already read, or a small fix to a worker's diff;
 - the hard part is a judgment you'd have to write out in full in the spec anyway;
-- you'd read the same two or three files yourself to write the spec.
+- the change itself is small, and you'd read the same two or three files yourself to write the spec.
 
 If you keep patching the same worker's output, the task was on the wrong lane, or the spec was missing a decision. Fix that, not the diff.
 
-**Write decisions down once.** Put the architecture, the interface choices and the debugging hypothesis into the spec, so no worker has to re-derive them. Revisit a decision when a report, a test or the review contradicts it, not otherwise.
+**Write decisions down once.** Put the architecture, the interface choices and the debugging hypothesis into the spec, so no worker has to re-derive them. Revisit a decision when a report, a test or the review contradicts it, or when you see it was wrong.
 
 ## The lanes
 
 | Lane | Agent | Model · effort (default) | Use when |
 |---|---|---|---|
 | Routine | `implementer` | Opus 5.5 (`opus`) · `medium` | The spec fully determines the outcome: wiring, CRUD, mechanical edits, straightforward features |
-| Complex | `implementer` | Opus 5.5 (`opus`) · `high` | Judgment the spec can't capture decides the outcome: concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide refactors, or a routine attempt that already failed |
+| Complex | `implementer` | Opus 5.5 (`opus`) · `high` | Judgment the spec can't capture decides the outcome: concurrency, non-trivial algorithms, security-sensitive paths, hard debugging, wide refactors, or a routine task that has failed twice |
 | Review | `fable-advisor` | Fable 5.2 (`fable`) · session effort | Commitment boundaries and the end-of-deliverable review (below) |
 
 Both worker lanes are the same agent. They differ only in the `model` and `effort` you pass on the Agent call, and you pass both every time. An agent started without a model can end up on the session model (on a Fable session, at Fable prices), and Opus 5.5 defaults to `medium` effort.
@@ -48,7 +48,7 @@ Both worker lanes are the same agent. They differ only in the `model` and `effor
 - **A file with no version, or `version: 1`,** is the v6 Codex format. Use the defaults and tell the user once to re-run setup.
 - **No file:** use the defaults and suggest setup once.
 
-**Check the model that actually ran.** The implementer's report carries the model ID from its own system prompt. If it doesn't match the pinned lane (`claude-opus-5-5` for `opus`, `claude-fable-5-2` for `fable`), say so. Claude Code silently falls back to the session model when a pinned model isn't available, and `CLAUDE_CODE_SUBAGENT_MODEL` overrides every pin.
+**Check the model that actually ran.** The implementer's report carries the model ID from its own system prompt. If it doesn't match the pinned lane (`claude-opus-5-5` for `opus`, `claude-fable-5-2` for `fable`, `claude-sonnet-5-5` for `sonnet`, `claude-haiku-5-5` for `haiku`), say so. Claude Code silently falls back to the session model when a pinned model isn't available, and `CLAUDE_CODE_SUBAGENT_MODEL` overrides every pin.
 
 **Choosing the lane.** How much does the outcome depend on judgment the spec can't carry? Little → routine. A lot, and mistakes are costly → complex, or keep the piece yourself. A routine task that fails once gets a corrected spec; if it fails twice, move it to complex.
 
@@ -82,9 +82,9 @@ If you can't finish writing the spec, the decision isn't made yet. Make it befor
 
 ## Parallel work and `/fable-advisor:build`
 
-Independent specs (no shared files, no ordering dependency) can go out as parallel implementer calls in one message.
-- A worker with `ISOLATION: none` leaves its changes uncommitted in your checkout.
-- A worker you start with `isolation: "worktree"` commits on its worktree's branch and reports it, and you merge it.
+Independent specs (no shared files, no ordering dependency) can go out as parallel implementer calls in one message, each with `ISOLATION: none`. Those workers leave their changes uncommitted in your checkout. Specs that touch the same files run one after another, or go through `/fable-advisor:build`.
+
+Outside `/build`, start a worker with `isolation: "worktree"` only when the user has asked for local commits. That worker commits on its worktree's branch. You then merge it and clean up as `/build`'s steps 4 and 6 describe, including asking before removing anything unmerged.
 
 **Workflows.** A Workflow runs only when the user invokes `/fable-advisor:build` or asks for a workflow in their own words. This skill loading isn't that opt-in. The command holds the full procedure. What matters when choosing it:
 - **Rounds:** up to 5 independent specs per round. Each runs in its own worktree under `.claude/worktrees/`, on its own `worktree-…` branch (the report names both). A `failed` spec gets one automatic retry. `blocked`, `spec-gap`, `refused` and crashed workers come back to you.
@@ -108,10 +108,11 @@ When the architect is also Fable, the review is the same model with a fresh cont
 
 ## Checking the evidence
 
-A report is a claim. Before accepting a worker's work, read the diff and re-run the verification command, or check its quoted output against the working tree. A report with no command output isn't done.
+A report is a claim. For a direct implementer call, read the diff and re-run the verification command, or check its quoted output against the working tree, before accepting the work. Inside `/fable-advisor:build`, three things stand in for reading every diff: step 4's validation of each report, the full checks on the merged tree, and the advisor review. A report with no command output isn't done.
 
 | Status | What it means | What to do |
 |---|---|---|
-| `refused` | An empty diff, so nothing was done | Treat it as a refusal |
+| `failed` | Verification failed after the worker's fix attempts | Send a corrected spec; after two failures, move it to the complex lane or do it yourself |
+| `refused` | An empty diff, so nothing was done | Find out why, then re-spec it or do it yourself |
 | `blocked` | The permission system denied a command the worker needed | Show the user the denied commands. Getting them allowed is the user's decision, so don't route around the denial |
 | `spec-gap` | The spec was missing a decision | Send a corrected spec, not "use your judgment" |
