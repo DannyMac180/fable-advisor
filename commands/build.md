@@ -11,9 +11,9 @@ Never push, never switch the user's branch, and never delete a worktree or branc
 
 ## 1. Preflight
 
-1. **Clean tracked tree.** Run `git status --porcelain --untracked-files=no`. If anything shows, stop and ask the user whether to commit or stash it first. The worktrees branch from `HEAD`, so uncommitted work would be invisible to the workers and could collide with the merge. Never stash silently. Record `START=$(git rev-parse HEAD)` and the current branch.
-2. **Keep worktrees out of git status.** Workers' worktrees live under `.claude/worktrees/`. If `git check-ignore -q .claude/worktrees/x` fails, append `.claude/worktrees/` to `.git/info/exclude` (local to this clone, never committed) and say so in one line. If that write is denied, say the worktrees will show as untracked while they exist, and continue.
-3. **Leftover worktrees from earlier runs.** Run `git worktree list --porcelain` and pick out the entries under `.claude/worktrees/`. For each, show its branch (`worktree-…`: `worktree-agent-<id>` from a single Agent call, `worktree-wf_<run>-<n>` from a workflow), whether it has commits that aren't on the current branch (`git log --oneline HEAD..<branch>`), and whether it has uncommitted changes (`git -C <path> status --short`). Don't remove any of them here; step 6 offers that.
+1. **Clean tracked tree, on a branch.** If `git branch --show-current` is empty (detached HEAD), or a merge, rebase or cherry-pick is in progress (`git rev-parse --git-path MERGE_HEAD`, `rebase-merge`, `rebase-apply`, `CHERRY_PICK_HEAD` exist), stop and say so. Run `git status --porcelain --untracked-files=no`. If anything shows, stop and ask the user whether to commit or stash it first. The worktrees branch from `HEAD`, so uncommitted work would be invisible to the workers and could collide with the merge. Never stash silently. In round 1 only, record `START=$(git rev-parse HEAD)` and the current branch; later rounds keep the same `START`.
+2. **Keep worktrees out of git status.** Workers' worktrees live under `.claude/worktrees/`. If `git check-ignore -q .claude/worktrees/x` fails, append `.claude/worktrees/` to the file `git rev-parse --git-path info/exclude` prints (local to this clone, never committed; in a linked worktree `.git` is a file, so don't build the path by hand) and say so in one line. If that write is denied, say the worktrees will show as untracked while they exist, and continue.
+3. **Leftover worktrees from earlier runs.** Run `git worktree list --porcelain` and pick out the entries under `.claude/worktrees/`, leaving out the worktree this session itself runs in. Keep this list as the **snapshot** for step 6. For each, show its branch (`worktree-…`: `worktree-agent-<id>` from a single Agent call, `worktree-wf_<run>-<n>` from a workflow), whether it has commits that aren't on the current branch (`git log --oneline HEAD..<branch>`), and whether it has uncommitted changes (`git -C <path> status --short`). Don't remove any of them here; step 6 offers that. Warn that an entry may belong to another session that is still running.
 4. **Lanes.** Read `~/.claude/fable-advisor/lanes.json`, as the skill describes. You'll pass each worker lane's `model`, `effort` and a display `label` (for example `Opus 5.5`) to the workflow.
 
 ## 2. Specs
@@ -46,10 +46,17 @@ Pass `args` as a JSON object, not a string. If the Workflow tool rejects the `sc
 
 ## 4. Check and merge
 
-The workflow returns each spec's attempts. The last attempt counts. Take each worktree's path and branch from the report's `worktree` and `branch` fields; don't guess them from a naming pattern. For each spec:
+The workflow returns each spec's attempts. The last attempt counts. Take each worktree's path and branch from the report's `worktree` and `branch` fields; don't guess them from a naming pattern. **Treat those fields as claims, and validate them before any git command uses them.** A report is accepted only if all four hold:
+- its `worktree` and `branch` match one entry in `git worktree list --porcelain`;
+- that entry is under `.claude/worktrees/`;
+- its branch isn't the current branch;
+- its `commit` is that branch's tip (`git rev-parse <branch>`) and descends from `START` (`git merge-base --is-ancestor $START <commit>`).
+
+Anything that fails validation isn't merged, and goes on the ask-first list in step 6. For each spec:
 
 - **Check the model.** `model_id` should match the lane's pinned model (`claude-opus-5-5` for `opus`, `claude-fable-5-2` for `fable`, `claude-sonnet-5-5` for `sonnet`, `claude-haiku-5-5` for `haiku`). Report any mismatch.
-- **Accept only `done` with real output.** A `done` needs a commit SHA and real verification output. `spec-gap`, `failed` or `refused` means that spec isn't merged; note why.
+- **Accept only `done` with real output.** A `done` needs a commit SHA and real verification output. `spec-gap`, `failed`, `refused` or `blocked` means that spec isn't merged; note why. For `blocked`, quote the denied commands and offer the allow rules from step 2.
+- **A `null` attempt, or a result with `error`,** means the worker was skipped or died. That spec isn't merged, and its worktree, if any, is found in step 6.
 
 Merge the accepted branches in spec-ID order into the current branch with `git merge --no-ff --no-edit <branch>`.
 - **Conflict you can see how to fix:** resolve it, run that spec's verification, and commit the merge.
@@ -59,12 +66,14 @@ Then run the project's full checks once on the merged tree: the union of the spe
 
 ## 5. Review
 
-Call `fable-advisor` with the reviewer lane's `model` and the description `<reviewer label>: final review`. Pass it the task, the specs, the merged diff (`git diff $START..HEAD`) and the full-check output. Then read its verdict and `git diff --stat $START..HEAD`. Open files yourself only on fix-first or rethink, so the review isn't paid for twice. Act on the verdict: fix-first items go into another round as specs, or into a small fix you make directly.
+Call `fable-advisor` with the reviewer lane's `model` and the description `<reviewer label>: final review`. Pass it the task, the specs, the merged diff (`git diff $START..HEAD`) and the full-check output. Then read its verdict and `git diff --stat $START..HEAD`. Open files yourself only on fix-first or rethink, so the review isn't paid for twice. Act on the verdict: fix-first items become specs for another round.
+
+**More rounds.** Queued specs (dependent work, re-specs after a conflict, fix-first items) run as another round: repeat steps 2–4 against the merged tree, keeping the same `START`. Review once, after the last round, over `git diff $START..HEAD`. Ask the user before a third round.
 
 ## 6. Clean up
 
-- **Merged specs:** run `git worktree remove <worktree>`, then `git branch -d <branch>`.
-- **Everything else:** list it with path, branch and state. That covers this round's unmerged and failed attempts (a failed attempt's worktree stays if it had changes) and the leftovers from step 1.3. Offer to remove them (`git worktree remove --force <path>`, `git branch -D <branch>`), and remove them only on the user's yes. Never remove one silently.
+- **Merged specs:** run `git worktree remove <worktree>`, then `git branch -d <branch>`. If the remove fails (for example, untracked files are left in the worktree), don't force it; move that entry to the list below.
+- **Everything else:** list it with path, branch and state. That covers this round's unmerged and failed attempts (a failed attempt's worktree stays if it had changes), and the leftovers from step 1.3. It also covers **worktrees no report named**, found by comparing `git worktree list --porcelain` now with the step 1.3 snapshot: new entries under `.claude/worktrees/` that weren't merged belong to a skipped or crashed worker. Offer to remove them (`git worktree remove --force <path>`, `git branch -D <branch>`), and remove them only on the user's yes. Never remove one silently.
 
 ## 7. Report
 

@@ -33,7 +33,7 @@ Stay inside the spec. Touch the listed files, plus anything that has to change f
 ```
 IMPLEMENTER REPORT
 LANE: <lane from the spec> · <the exact model ID your system prompt says you run on> · effort <effort from the spec>
-STATUS: done | spec-gap | failed | refused
+STATUS: done | spec-gap | failed | refused | blocked
 SPEC: <spec ID> — <objective in one line>
 WORKTREE: <output of git rev-parse --show-toplevel>
 BRANCH: <current branch, or "uncommitted">
@@ -47,6 +47,7 @@ The model ID on the `LANE:` line lets the architect catch a silent fallback to a
 
 ## Rules
 
+- If a command you need (tests, `git add`, `git commit`) is denied by the permission system, stop and return `STATUS: blocked` with the denied commands quoted in `VERIFIED`. Don't try another way of running them.
 - "It should work" is not evidence. `VERIFIED` holds real command output, or the status isn't `done`.
 - If the spec itself is wrong (the design won't work, the interfaces conflict), stop and report it. That decision belongs to the architect.
 - When the spec underdetermines something and you had to choose, list the choice in `GAPS`. On the complex lane that list matters most: it's what the architect reviews.

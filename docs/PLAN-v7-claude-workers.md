@@ -64,13 +64,13 @@ The Workflow tool runs only on explicit opt-in. A command the user invokes that 
    - `phase('Implement')`: `pipeline(specs, spec => agent(spec, {agentType: 'fable-advisor:implementer', model: 'opus', effort: <lane>, isolation: 'worktree', schema: REPORT}))`. Specs that depend on each other run in order inside one pipeline item. Independent specs fan out.
    - **Retry:** a `failed` spec gets one retry with the failure output attached. If it fails again, it's returned as failed. No automatic escalation.
    - The script returns every report. Merging happens **outside the workflow** (step 5), because it needs the session's judgment and runs in the main checkout.
-5. **Merge in the session.** For each `done` branch, merge in spec-ID order (`git merge --no-ff refs/heads/v7/<run>/<id>`) into the current branch:
+5. **Merge in the session.** For each `done` branch, merge in spec-ID order (`git merge --no-ff <branch from the report>`) into the current branch:
    - **Clean merge:** continue.
    - **Conflict:** the session resolves it if the fix is obvious. Otherwise it aborts that merge (`git merge --abort`) and re-specs the piece against the merged tree for a second round.
    - **After all merges:** run the project's full verification once on the merged tree. One worktree passing its own check doesn't prove the merge works.
 6. **Review.** One `agent(..., {agentType: 'fable-advisor:fable-advisor', model: 'fable'})` reads `git diff <start>..HEAD` against the stated goal and returns ship / fix-first / rethink. This can be a one-agent workflow or a plain Agent call, since `/build` already counts as opting in.
 7. **Decide and report.** The session reads the verdict, the verification output and `git diff --stat`. It opens files only on fix-first or rethink, because re-reading the full diff pays Fable twice. It reports each spec's lane, model and effort, plus the merge result.
-8. **Clean up.** Delete the merged `v7/<run>/*` branches and their worktrees (`git worktree remove`). Keep unmerged ones and list them in the report.
+8. **Clean up.** Delete the merged worktree branches and their worktrees (`git worktree remove`). Keep unmerged ones and list them in the report.
 
 **Limits:** under 10 agents per workflow by default. A larger build runs several `/build` rounds, and the session reads each result before the next.
 
