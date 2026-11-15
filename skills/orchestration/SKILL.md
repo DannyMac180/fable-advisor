@@ -72,7 +72,18 @@ A spec you can't finish writing is a signal the decision isn't made yet — that
 
 ## Parallelism
 
-Independent specs (no shared files, no ordering dependency) launch as parallel implementer calls in a single message. Sequential chains and single-file surgery stay serial. A worker with `ISOLATION: none` leaves its changes uncommitted in your checkout; a worker you start with `isolation: "worktree"` and `ISOLATION: worktree` commits on that worktree's branch and reports it, and the architect merges. (The full worktree-and-merge flow arrives with `/fable-advisor:build`.)
+Independent specs (no shared files, no ordering dependency) launch as parallel implementer calls in a single message. Sequential chains and single-file surgery stay serial. A worker with `ISOLATION: none` leaves its changes uncommitted in your checkout; a worker you start with `isolation: "worktree"` and `ISOLATION: worktree` commits on that worktree's branch and reports it, and the architect merges it.
+
+## `/fable-advisor:build` — the workflow path
+
+A Workflow runs **only** when the user invokes `/fable-advisor:build` or asks for a workflow in their own words. This skill loading by itself isn't that opt-in. Without it, independent specs go out as parallel implementer calls in one message, as above.
+
+The command holds the full procedure. What the architect needs to know when choosing it:
+
+- **Each round runs up to 5 independent specs**, each in its own worktree under `.claude/worktrees/` on its own `worktree-…` branch (the worker's report names both), with one automatic retry per `failed` spec (`blocked`, `spec-gap`, `refused` and crashed workers go back to the architect). Dependent work waits for the next round, because every worktree branches from `HEAD`.
+- **Workers can't ask for permission.** Each spec's verification command, `git add` and `git commit` must be allowed, or the spec comes back `failed`.
+- **Merging happens in the session.** Branches merge in spec-ID order with `--no-ff`. A conflict is either resolved or re-specced against the merged tree. The full checks then run once on the merged tree, before the `fable-advisor` review.
+- **Nothing unmerged is deleted without a yes.** Merged worktrees and branches are removed. Failed or unmerged ones, and leftovers from earlier runs, are listed and removed only if the user agrees.
 
 ## Commitment boundaries and the final review
 
@@ -92,4 +103,4 @@ If the official OpenAI Codex plugin for Claude Code is installed (`codex@openai-
 
 ## Verification
 
-Reports are claims, not evidence. Before accepting any worker's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. An empty diff is a refusal, not a success — the implementer reports it as `refused`; treat it as one. A worker that reports `spec-gap` gets a corrected spec, not a "use your judgment".
+Reports are claims, not evidence. Before accepting any worker's work: read the diff, and re-run the verification command (or spot-check its quoted output against the working tree). "Should work", "tests should pass", or a report with no command output means the task is not done. An empty diff is a refusal, not a success — the implementer reports it as `refused`; treat it as one. `blocked` means the permission system denied a command the worker needed: surface the denied commands to the user, never route around them. A worker that reports `spec-gap` gets a corrected spec, not a "use your judgment".

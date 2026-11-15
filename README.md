@@ -69,6 +69,24 @@ implementation, and verify the evidence before you call it done.
 
 The architect writes the spec, picks the lane and, if needed, overrides its effort (rate limiting touches concurrency — a good case for the complex lane, maybe raised to `xhigh`), reads the diff and verification evidence when the report comes back, sends the finished work to `fable-advisor` for the final review, and only then reports done.
 
+### `/fable-advisor:build` — the workflow path
+
+For a build that splits into several independent pieces, run it as a workflow:
+
+```
+/fable-advisor:build Add rate limiting and request logging to the public API
+```
+
+The session writes up to five independent specs per round. A Claude Code Workflow runs each one on its pinned lane in its own git worktree under `.claude/worktrees/`, on its own branch, retrying a failed spec once. The session then:
+- merges the branches into your current branch (`--no-ff`, local commits, never pushed);
+- runs the full checks on the merged tree;
+- gets the Fable review;
+- removes the merged worktrees.
+
+Failed or unmerged worktrees, and leftovers from earlier runs, are listed and removed only if you say yes.
+
+Workers run in the background and can't ask for permission. Allow each spec's verification command, `git add` and `git commit` (`/build` offers to add them to `.claude/settings.local.json`), or those specs come back `failed`. Workflows only run when you invoke `/build` or ask for one; otherwise the architect sends parallel implementer calls.
+
 To make the doctrine always-on, add one line to your project's `CLAUDE.md`:
 
 ```

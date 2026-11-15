@@ -1,6 +1,12 @@
 # Plan — v7: Fable orchestrates, Opus workers implement, Fable reviews
 
-Status: decisions made (2026-11-15). PR 1 implemented on `claude/v7-pr1-implementer`.
+Status: decisions made (2026-11-15). PR 1 merged as 7.0.0 (DannyMac180/fable-advisor#29). PR 2 (`/fable-advisor:build`, 7.1.0) implemented on `claude/v7-pr2-build`.
+
+**Checked in scratch repos before and during PR 2:**
+- An `isolation: "worktree"` Agent call creates `.claude/worktrees/agent-<id>` on branch `worktree-agent-<id>`. A workflow `agent()` with isolation creates `worktree-wf_<run>-<n>`. So `/build` reads the path and branch from the worker's report and never guesses them from a naming pattern.
+- A worktree whose agent made changes is kept after the agent finishes, including a failed attempt's uncommitted changes. That's why cleanup lists leftovers and removes them only with a yes.
+- Background workers can't ask for approval. Without allow rules for the tests, `git add` and `git commit`, the implementer reports `failed` with the blocked commands quoted.
+- Running `/fable-advisor:build` headless on Opus, two routine specs that both edit `calc.py` gave: 2 worker commits, a merge conflict resolved by the session, 3/3 tests passing on the merged tree, a Fable 5.2 "ship" review, and both worktrees and branches removed. The write to `.git/info/exclude` was denied in headless mode, and the command now continues when that happens.
 
 **Checked during PR 1 (Claude Code 2.1.316):** the `fable` alias resolves to `claude-fable-5-2` and `opus` to `claude-opus-5-5`. Subagents started with an explicit `model` state their model ID in their system prompt, so the `LANE:` self-report works. That was checked on a `general-purpose` subagent; the plugin's own `implementer` is checked once installed.
 
@@ -58,13 +64,13 @@ The Workflow tool runs only on explicit opt-in. A command the user invokes that 
    - `phase('Implement')`: `pipeline(specs, spec => agent(spec, {agentType: 'fable-advisor:implementer', model: 'opus', effort: <lane>, isolation: 'worktree', schema: REPORT}))`. Specs that depend on each other run in order inside one pipeline item. Independent specs fan out.
    - **Retry:** a `failed` spec gets one retry with the failure output attached. If it fails again, it's returned as failed. No automatic escalation.
    - The script returns every report. Merging happens **outside the workflow** (step 5), because it needs the session's judgment and runs in the main checkout.
-5. **Merge in the session.** For each `done` branch, merge in spec-ID order (`git merge --no-ff refs/heads/v7/<run>/<id>`) into the current branch:
+5. **Merge in the session.** For each `done` branch, merge in spec-ID order (`git merge --no-ff <branch from the report>`) into the current branch:
    - **Clean merge:** continue.
    - **Conflict:** the session resolves it if the fix is obvious. Otherwise it aborts that merge (`git merge --abort`) and re-specs the piece against the merged tree for a second round.
    - **After all merges:** run the project's full verification once on the merged tree. One worktree passing its own check doesn't prove the merge works.
 6. **Review.** One `agent(..., {agentType: 'fable-advisor:fable-advisor', model: 'fable'})` reads `git diff <start>..HEAD` against the stated goal and returns ship / fix-first / rethink. This can be a one-agent workflow or a plain Agent call, since `/build` already counts as opting in.
 7. **Decide and report.** The session reads the verdict, the verification output and `git diff --stat`. It opens files only on fix-first or rethink, because re-reading the full diff pays Fable twice. It reports each spec's lane, model and effort, plus the merge result.
-8. **Clean up.** Delete the merged `v7/<run>/*` branches and their worktrees (`git worktree remove`). Keep unmerged ones and list them in the report.
+8. **Clean up.** Delete the merged worktree branches and their worktrees (`git worktree remove`). Keep unmerged ones and list them in the report.
 
 **Limits:** under 10 agents per workflow by default. A larger build runs several `/build` rounds, and the session reads each result before the next.
 
