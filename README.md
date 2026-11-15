@@ -18,7 +18,11 @@ Claude Code lets every subagent run on a different model — and lets the sessio
 
 **You can see which model runs each step.** The orchestration skill labels every delegation with its model and effort (`Opus 5.5 · medium: add pagination`, `Fable 5.2: final review`), and every worker report names the model ID that actually ran, so a silent fallback shows up.
 
-Tokens route by price: the session emits judgment and specs, the Opus workers emit the code at half Fable's per-token price ($4/$20 vs $8/$40 per MTok), and the Fable premium is spent where it changes outcomes: the architecture and the final review.
+**What it costs, measured.** Opus 5.5 is half Fable 5.2's per-token price ($4/$20 vs $8/$40 per MTok), but in our runs `/fable-advisor:build` never cost less than a Fable session working alone. Both passed every hidden acceptance test.
+- **Small tasks:** Fable alone was about **2.8× cheaper and 3× faster**. Fable's own overhead (specs, merges, checks, the review) cost more than the whole solo task.
+- **One larger task, with a review in both arms:** the costs came out close. `/build` cost about **12% more** ($3.53 vs $3.14), though Opus took about 30% of its spend.
+
+So use Fable alone for work it can finish in a few minutes. Reach for `/build` for parallel isolated work, a check on the merged result and an independent review, not for savings. Numbers and method are in [`docs/measurements.md`](docs/measurements.md).
 
 The plugin ships the **orchestration skill** — the doctrine that gives the session what delegation costs and when it pays, when to use each lane and effort level, the six-part spec that makes context-free delegation safe, and the verification rules that keep every worker honest. It's written for a Fable 5.2 architect: it gives the cost facts and leaves the call to the model, rather than fixed rules like "never type code yourself".
 
@@ -46,7 +50,7 @@ Then pick whichever model you want as the architect — the plugin doesn't choos
 
 ## Requirements
 
-- **Claude Code ≥ 2.1.170** with a subscription that includes Fable (Pro, Max, Team, or Enterprise — all current consumer plans qualify). The agents use the `opus` and `fable` aliases, which resolve to Opus 5.5 and Fable 5.2 (checked on Claude Code 2.1.316).
+- **Claude Code ≥ 2.1.321** with a subscription that includes Fable (Pro, Max, Team, or Enterprise — all current consumer plans qualify). The agents use the `opus` and `fable` aliases. On 2.1.321 and 2.1.325, `fable` resolves to Fable 5.2. **On 2.1.316 it resolves to Fable 5.1**, so the review and any Fable lane would silently run the older model. Update with `claude update`; the reviewer's first line names the model it ran on, so you can check.
 - **No Fable access** (e.g. API-key billing)? Run `/fable-advisor:setup` and pick Opus 5.5 for the reviewer. In lite mode (the agent file alone, no skill), change `model: fable` → `model: opus` in `agents/fable-advisor.md` instead. Same pattern; the review becomes a clean-context Opus check.
 - **Nothing else.** v7 workers are Claude Code subagents — no Codex CLI, no extra login.
 - **Optional: the [Codex plugin for Claude Code](https://github.com/openai/codex-plugin-cc)** (`/plugin marketplace add openai/codex-plugin-cc`, then `/plugin install codex@openai-codex`). When it's enabled, the orchestration skill runs `/codex:adversarial-review` ahead of the Fable review on security-sensitive, migration, and API-shape deliverables. It's the only check in the pattern from outside the Claude family. Not a dependency.
@@ -110,7 +114,7 @@ Migrate our checkout sessions from Postgres to Redis — plan it,
 consult your advisor before committing, then implement.
 ```
 
-A typical consult costs cents. To make it automatic, add to your project's `CLAUDE.md`:
+A consult is one short read-only call. To make it automatic, add to your project's `CLAUDE.md`:
 
 ```
 Before committing to any architecture decision, migration, or refactor
@@ -123,7 +127,7 @@ touching 3+ files, consult the fable-advisor agent and act on its verdict.
 
 **Does this work on claude.ai?** No — subagent model routing is Claude Code only (CLI, desktop, VS Code, web).
 
-**Why not just let Fable (or your session model) write the code too?** You can. Fable is excellent. It's also the most expensive model per token, and most of a session's tokens are implementation mechanics that Opus 5.5 handles at half the per-token price. Spend the premium where it changes outcomes: the architecture and the final review.
+**Why not just let Fable (or your session model) write the code too?** For small tasks, do exactly that. Measured, Fable alone was about 2.8× cheaper than `/build` on small tasks and about 12% cheaper on one larger, reviewed task ([`docs/measurements.md`](docs/measurements.md)). The worker lanes and `/build` are for parallel, isolated work with an independent review. A saving hasn't been shown at any size tested.
 
 **Upgrading from v6?** v7 drops the Codex lanes: **`luna-implementer` and `sol-implementer` are removed**, replaced by one Claude-native **`implementer`** agent (Opus 5.5) on two lanes, routine at `medium` and complex at `high`. Nothing needs the Codex CLI any more. `lanes.json` moves to version 2 — re-run `/fable-advisor:setup`; a v6 file is ignored until you do. The advisor is now Fable 5.2. What you give up is v6's cross-vendor implementation: every line of code now comes from a Claude model, and the optional `/codex:adversarial-review` is the only check from another family. Update anything (a `CLAUDE.md`, a script) that calls the old agents by name.
 
@@ -133,7 +137,7 @@ touching 3+ files, consult the fable-advisor agent and act on its verdict.
 
 **Upgrading from v3?** v4 moved the architect to Opus, removed the Grok 4.5 lane, and made `codex-implementer` the default typing lane; if you still want the Grok lane, grab [`grok-implementer.md` from the v3.1 tree](https://github.com/DannyMac180/fable-advisor/blob/b3b50a9/agents/grok-implementer.md).
 
-**Why did the GPT lanes go?** Simpler setup and one billing relationship: Claude Code subagents need no second CLI, login, or prompt-injection-proof preamble, and Opus 5.5 does the typing at half Fable's price. The cost is vendor diversity in the code itself. If you want it back for a deliverable, run `/codex:adversarial-review` on the diff, or grab [`luna-implementer.md` from the v6.1 tree](https://github.com/DannyMac180/fable-advisor/blob/9df042b/agents/luna-implementer.md).
+**Why did the GPT lanes go?** Simpler setup and one billing relationship: Claude Code subagents need no second CLI, login, or prompt-injection-proof preamble, and Claude-native workers can use Claude Code's own edit tools and worktrees. The cost is vendor diversity in the code itself. If you want it back for a deliverable, run `/codex:adversarial-review` on the diff, or grab [`luna-implementer.md` from the v6.1 tree](https://github.com/DannyMac180/fable-advisor/blob/9df042b/agents/luna-implementer.md).
 
 ## License
 

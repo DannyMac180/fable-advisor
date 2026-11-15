@@ -1,6 +1,6 @@
 # Plan — v7: Fable orchestrates, Opus workers implement, Fable reviews
 
-Status: decisions made (2026-11-15). PR 1 merged as 7.0.0 (DannyMac180/fable-advisor#29). PR 2 merged as 7.1.0 (DannyMac180/fable-advisor#30). PR 3 (doctrine rewrite, 7.2.0) on `claude/v7-pr3-doctrine`; audit in `docs/audit-fable-5-2.md`.
+Status: decisions made (2026-11-15). PR 1 merged as 7.0.0 (DannyMac180/fable-advisor#29). PR 2 merged as 7.1.0 (DannyMac180/fable-advisor#30). PR 3 merged as 7.2.0 (DannyMac180/fable-advisor#31). PR 4 (measurements, 7.3.0) on `claude/v7-pr4-measure`. The measurements found `/build` about 2.8× more expensive than Fable alone on small tasks; see `docs/measurements.md`.
 
 **Checked in scratch repos before and during PR 2:**
 - An `isolation: "worktree"` Agent call creates `.claude/worktrees/agent-<id>` on branch `worktree-agent-<id>`. A workflow `agent()` with isolation creates `worktree-wf_<run>-<n>`. So `/build` reads the path and branch from the worker's report and never guesses them from a naming pattern.
@@ -8,7 +8,7 @@ Status: decisions made (2026-11-15). PR 1 merged as 7.0.0 (DannyMac180/fable-adv
 - Background workers can't ask for approval. Without allow rules for the tests, `git add` and `git commit`, the implementer reported `failed` with the blocked commands quoted (since 7.1.0, the status is `blocked`).
 - Running `/fable-advisor:build` headless on Opus, two routine specs that both edit `calc.py` gave: 2 worker commits, a merge conflict resolved by the session, 3/3 tests passing on the merged tree, a Fable 5.2 "ship" review, and both worktrees and branches removed. The write to `.git/info/exclude` was denied in headless mode, and the command now continues when that happens.
 
-**Checked during PR 1 (Claude Code 2.1.316):** the `fable` alias resolves to `claude-fable-5-2` and `opus` to `claude-opus-5-5`. Subagents started with an explicit `model` state their model ID in their system prompt, so the `LANE:` self-report works. That was checked on a `general-purpose` subagent; the plugin's own `implementer` is checked once installed.
+**Checked during PR 1, inside the desktop app's Claude Code (2.1.321):** the `fable` alias resolves to `claude-fable-5-2`. *Correction (PR 4):* this was first recorded as "2.1.316", but the terminal CLI at 2.1.316 resolves `fable` to `claude-fable-5-1`. The pilot rows in `bench/results/2026-11-15-pilot-cc2.1.316.jsonl` show it. `opus` resolves to `claude-opus-5-5` and `opus` to `claude-opus-5-5`. Subagents started with an explicit `model` state their model ID in their system prompt, so the `LANE:` self-report works. That was checked on a `general-purpose` subagent; the plugin's own `implementer` is checked once installed.
 
 **Release note:** the marketplace serves `main`, so merging PR 1 ships the breaking change (Codex lanes removed). PR 1 therefore bumps to **7.0.0**. PRs 2–4 are minor releases (7.1, 7.2, …).
 
