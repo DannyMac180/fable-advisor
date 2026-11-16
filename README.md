@@ -1,11 +1,5 @@
 # Fable Advisor
 
-**Your session runs the show on whatever model you like. Opus 5.5 workers do the typing, and Fable 5.2 reviews before anything ships.**
-
-<a href="https://github.com/DannyMac180/fable-advisor/raw/main/assets/fable-advisor-demo.mp4"><img src="assets/fable-advisor-demo-poster.png" alt="30-second demo of the v5 pattern: Fable 5.1 orchestrates, GPT-5.6 Luna implements, Fable 5.1 reviews" width="100%"></a>
-
-<p align="center"><em>▶ 30s demo (v5, Codex lanes) — orchestrator → worker implements → Fable reviews</em></p>
-
 Claude Code lets every subagent run on a different model — and lets the session itself run on a different model than its subagents. This plugin exploits that with the **architect pattern**: your session — on whichever model you think is best — acts as the architect. It owns requirements, decomposition, specs, and verification, decides which implementation to hand to which lane, and gets a clean-context **Fable 5.2** review of the finished work before calling anything done:
 
 | Lane | Model · default effort | Invocation | Route here when |
